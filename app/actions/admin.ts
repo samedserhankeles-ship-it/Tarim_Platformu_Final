@@ -134,16 +134,53 @@ export async function toggleListingActiveStatusAction(listingId: string, type: "
   try {
     await checkAdmin();
 
+    let listing;
+    let userId;
+    let title;
+
     if (type === "product") {
-      await prisma.product.update({
+      listing = await prisma.product.update({
         where: { id: listingId },
         data: { active: newStatus },
+        select: { userId: true, title: true }
       });
+      userId = listing.userId;
+      title = listing.title;
     } else if (type === "job") {
-      await prisma.jobPosting.update({
+      listing = await prisma.jobPosting.update({
         where: { id: listingId },
         data: { active: newStatus },
+        select: { userId: true, title: true }
       });
+      userId = listing.userId;
+      title = listing.title;
+    }
+
+    // Kullanıcıya bildirim gönder
+    if (userId && title) {
+        let notificationTitle = "";
+        let notificationMessage = "";
+        let notificationType = "INFO";
+
+        if (newStatus === false) {
+            notificationTitle = "İlanınız Yayından Kaldırıldı";
+            notificationMessage = `"${title}" başlıklı ilanınız yönetici tarafından yayından kaldırılmıştır.`;
+            notificationType = "WARNING";
+        } else {
+            notificationTitle = "İlanınız Yayına Alındı";
+            notificationMessage = `"${title}" başlıklı ilanınız onaylanmış ve yayına alınmıştır.`;
+            notificationType = "SUCCESS";
+        }
+
+        await prisma.notification.create({
+            data: {
+                userId: userId,
+                title: notificationTitle,
+                message: notificationMessage,
+                type: notificationType,
+                link: "/dashboard/ilanlarim"
+            }
+        });
     }
 
     revalidatePath("/explore"); // Ana ilan sayfasını güncelle
