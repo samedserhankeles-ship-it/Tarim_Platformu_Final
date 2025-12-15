@@ -29,6 +29,7 @@ type UserType = {
     role: string;
     image: string | null;
     unreadNotificationCount?: number;
+    latestNotifications?: any[]; // Bildirim listesi eklendi
 } | null;
 
 export function MasterHeader({ user }: { user: UserType }) {
@@ -50,13 +51,13 @@ export function MasterHeader({ user }: { user: UserType }) {
   ];
 
   const isHomepage = pathname === "/";
-  const isDashboard = pathname?.startsWith("/dashboard");
+  // const isDashboard = pathname?.startsWith("/dashboard"); // Artık MasterHeader Dashboard'da da görünecek
   const isAuthPage = pathname?.startsWith("/auth");
 
-  // Dashboard sayfalarında header'ı gizle (kendi sidebar'ı var)
-  if (isDashboard) {
-    return null;
-  }
+  // Dashboard sayfalarında header'ı gizleme kontrolü kaldırıldı.
+  // if (isDashboard) {
+  //   return null;
+  // }
 
   // Auth sayfalarında VEYA Ana Sayfada kullanıcıyı null gibi kabul et (Böylece Giriş Yap/Kayıt Ol butonları görünür)
   const displayUser = (isAuthPage || isHomepage) ? null : user;
@@ -120,7 +121,7 @@ export function MasterHeader({ user }: { user: UserType }) {
             </nav>
             )}
 
-            {/* AUTH ACTIONS - displayUser kullanarak kontrol ediyoruz */}
+            {/* AUTH ACTIONS */}
             {!displayUser ? (
                 <div className="flex items-center gap-2">
                     <Button asChild variant="ghost" size="sm" className="hidden sm:inline-flex">
@@ -152,16 +153,26 @@ export function MasterHeader({ user }: { user: UserType }) {
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-80 overflow-x-hidden">
-                            <DropdownMenuLabel>Bildirimler</DropdownMenuLabel>
+                            <DropdownMenuLabel>Son Bildirimler</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            { (displayUser.unreadNotificationCount || 0) > 0 ? (
-                                <DropdownMenuItem asChild>
-                                    <Link href="/dashboard/bildirimler" className="w-full text-center cursor-pointer text-emerald-600 font-medium">
-                                        {(displayUser.unreadNotificationCount || 0) > 0 && `${displayUser.unreadNotificationCount} yeni bildiriminiz var`}
-                                    </Link>
-                                </DropdownMenuItem>
+                            {displayUser.latestNotifications && displayUser.latestNotifications.length > 0 ? (
+                                displayUser.latestNotifications.map((notification) => (
+                                    <DropdownMenuItem key={notification.id} asChild>
+                                        <Link href={notification.link || "/dashboard/bildirimler"} className="flex flex-col items-start gap-1 p-3 cursor-pointer">
+                                            <div className="flex items-center justify-between w-full">
+                                                <span className={`font-medium text-sm ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                    {notification.title}
+                                                </span>
+                                                {!notification.isRead && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground line-clamp-2">
+                                                {notification.message}
+                                            </p>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                ))
                             ) : (
-                                <div className="p-3 text-center text-sm text-muted-foreground">
+                                <div className="p-4 text-center text-sm text-muted-foreground">
                                     Henüz bildiriminiz yok.
                                 </div>
                             )}

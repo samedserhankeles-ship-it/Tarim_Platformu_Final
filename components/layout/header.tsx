@@ -12,7 +12,8 @@ import {
   FileText,
   MessageSquare,
   Settings,
-  LogOut
+  LogOut,
+  Heart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { logoutAction } from "@/app/actions/auth";
 
-// User tipi tanımı (MasterHeader ile uyumlu olması için)
+// User tipi tanımı
 type UserType = {
     id: string;
     name: string | null;
@@ -36,6 +37,7 @@ type UserType = {
     role: string;
     image: string | null;
     unreadNotificationCount?: number;
+    latestNotifications?: any[]; // Bildirim listesi eklendi
 } | null;
 
 export function Header({ user = null }: { user?: UserType }) {
@@ -56,7 +58,7 @@ export function Header({ user = null }: { user?: UserType }) {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
         
-        {/* LOGO Kaldırıldı */}
+        {/* LOGO Kaldırıldı (Kullanıcı isteği üzerine) */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Logo ve TarımPazar yazısı kullanıcı isteği üzerine kaldırıldı */}
         </div>
@@ -79,9 +81,9 @@ export function Header({ user = null }: { user?: UserType }) {
             
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground mr-2">
-                <Link href="/explore" className="hover:text-emerald-600 transition-colors">İlanlar</Link>
-                <Link href="/market" className="hover:text-emerald-600 transition-colors">Pazar</Link>
-                <Link href="/community" className="hover:text-emerald-600 transition-colors">Topluluk</Link>
+                <Link href="/dashboard" className="hover:text-emerald-600 transition-colors">Panel</Link> {/* İlanlar yerine Panel */}
+                <Link href="/market" className="hover:text-emerald-600 transition-colors">Market</Link>
+                <Link href="/dashboard/mesajlar" className="hover:text-emerald-600 transition-colors">Mesajlar</Link>
             </nav>
 
             {/* AUTH ACTIONS */}
@@ -96,18 +98,57 @@ export function Header({ user = null }: { user?: UserType }) {
                 </div>
             ) : (
                 <div className="flex items-center gap-3">
-                     {/* Bildirimler */}
-                     <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-emerald-700">
-                        <Bell className="h-5 w-5" />
-                        {(user.unreadNotificationCount || 0) > 0 && (
-                            <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-bold ring-2 ring-white">
-                                {user.unreadNotificationCount}
-                            </span>
-                        )}
+                     {/* Favoriler Butonu */}
+                     <Button asChild variant="ghost" size="icon" className="relative text-muted-foreground hover:text-red-500">
+                        <Link href="/dashboard/favoriler">
+                            <Heart className="h-5 w-5" />
+                        </Link>
                      </Button>
 
-                     {/* Ayırıcı Çizgi */}
-                     <div className="h-6 w-px bg-gray-200 hidden md:block" />
+                     {/* Bildirimler */}
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="relative text-muted-foreground hover:text-emerald-700">
+                                <Bell className="h-5 w-5" />
+                                {(user.unreadNotificationCount || 0) > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-bold ring-2 ring-white">
+                                        {user.unreadNotificationCount}
+                                    </span>
+                                )}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-80 overflow-x-hidden">
+                            <DropdownMenuLabel>Son Bildirimler</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            {user.latestNotifications && user.latestNotifications.length > 0 ? (
+                                user.latestNotifications.map((notification) => (
+                                    <DropdownMenuItem key={notification.id} asChild>
+                                        <Link href={notification.link || "/dashboard/bildirimler"} className="flex flex-col items-start gap-1 p-3 cursor-pointer">
+                                            <div className="flex items-center justify-between w-full">
+                                                <span className={`font-medium text-sm ${!notification.isRead ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                                    {notification.title}
+                                                </span>
+                                                {!notification.isRead && <span className="h-2 w-2 rounded-full bg-emerald-500" />}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground line-clamp-2">
+                                                {notification.message}
+                                            </p>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                ))
+                            ) : (
+                                <div className="p-4 text-center text-sm text-muted-foreground">
+                                    Henüz bildiriminiz yok.
+                                </div>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                                <Link href="/dashboard/bildirimler" className="w-full text-center cursor-pointer text-emerald-600 font-medium">
+                                    Tümünü Gör
+                                </Link>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                     </DropdownMenu>
 
                      {/* Kullanıcı Dropdown */}
                      <DropdownMenu>

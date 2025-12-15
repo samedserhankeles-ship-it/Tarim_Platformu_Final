@@ -55,6 +55,17 @@ export async function getCurrentUser() {
       },
     });
 
+    // Fetch latest 5 notifications
+    const latestNotifications = await prisma.notification.findMany({
+      where: {
+        userId: user.id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 5,
+    });
+
     // Fetch active listings count for JobPostings
     const activeJobPostingsCount = await prisma.jobPosting.count({
       where: {
@@ -125,6 +136,7 @@ export async function getCurrentUser() {
     return {
       ...user,
       unreadNotificationCount,
+      latestNotifications,
       activeListingsCount,
       passiveListingsCount,
       totalFavoritesCount,

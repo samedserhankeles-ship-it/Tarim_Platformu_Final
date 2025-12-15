@@ -91,7 +91,8 @@ function SidebarContent({ user, pathname, isMobile }: { user: UserType; pathname
             variant={isActive ? "secondary" : "ghost"}
             className={`w-full justify-start ${isActive ? "bg-emerald-50 text-emerald-700" : "text-muted-foreground"}`}
           >
-            <item.icon className="mr-2 h-4 w-4" />
+            {/* @ts-ignore */}
+            {item.icon && <item.icon className="mr-2 h-4 w-4" />} 
             {item.label}
           </Button>
         );
@@ -123,15 +124,7 @@ export function Sidebar({ user }: { user: UserType }) {
     <>
       {/* Desktop Sidebar */}
       <aside className="w-64 bg-white border-r hidden md:flex flex-col min-h-screen shrink-0">
-        {/* Logo / Ana Sayfa Linki */}
-        <div className="p-4 border-b">
-          <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2 font-bold text-xl text-emerald-700 hover:opacity-90 transition-opacity">
-            <div className="bg-emerald-100 p-1.5 rounded-lg">
-              <Sprout className="h-5 w-5 text-emerald-600" />
-            </div>
-            <span>Tarım<span className="text-foreground">Pazar</span></span>
-          </Link>
-        </div>
+        {/* Logo / Ana Sayfa Linki kaldırıldı */}
         <SidebarContent user={user} pathname={pathname} />
       </aside>
 
@@ -144,14 +137,7 @@ export function Sidebar({ user }: { user: UserType }) {
         </SheetTrigger>
         <SheetContent side="left" className="w-64 p-0 sm:w-64">
           <SheetTitle className="sr-only">Menü</SheetTitle>
-          <div className="p-4 border-b">
-            <Link href="/" className="flex items-center gap-2 font-bold text-lg text-emerald-700 hover:opacity-90 transition-opacity">
-              <div className="bg-emerald-100 p-1 rounded-lg">
-                <Sprout className="h-4 w-4 text-emerald-600" />
-              </div>
-              <span>Tarım<span className="text-foreground">Pazar</span></span>
-            </Link>
-          </div>
+          {/* Logo / Ana Sayfa Linki kaldırıldı */}
           {/* Ana Sayfa Butonu (Kullanıcı isteği üzerine kaldırıldı) */}
           <SidebarContent user={user} pathname={pathname} isMobile={true} />
         </SheetContent>
