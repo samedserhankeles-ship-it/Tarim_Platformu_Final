@@ -4,13 +4,23 @@ import Link from "next/link";
 import { Tractor, ArrowLeft, Users, Briefcase, Loader2 } from "lucide-react";
 import { signUpAction } from "@/app/actions/auth";
 import { useState, useTransition } from "react";
+import { TermsModal } from "@/components/auth/TermsModal";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 export default function SignUpPage() {
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     setErrorMessage(null);
+
+    if (!termsAccepted) {
+      setErrorMessage("Kayıt olabilmek için sözleşmeleri kabul etmelisiniz.");
+      return;
+    }
+
     startTransition(async () => {
       const result = await signUpAction(formData);
       if (result && !result.success) {
@@ -85,6 +95,24 @@ export default function SignUpPage() {
           <div className="space-y-2">
             <label htmlFor="password" className="text-sm font-medium leading-none">Şifre</label>
             <input id="password" name="password" type="password" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
+          </div>
+
+          {/* Sözleşme Onayı */}
+          <div className="flex items-start space-x-2 pt-2">
+            <Checkbox 
+              id="terms" 
+              checked={termsAccepted}
+              onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+            />
+            <div className="grid gap-1.5 leading-none">
+              <Label
+                htmlFor="terms"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                <TermsModal />
+                'nı okudum ve kabul ediyorum.
+              </Label>
+            </div>
           </div>
           
           {errorMessage && (
