@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+@theme {
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+/* 
+  Tailwind CSS v4 kullanıldığı için @layer base yapısı yerine
+  doğrudan CSS değişkenleri ve @theme bloğu kullanıyoruz.
+*/
+
+:root {
+  /* ZEMİN & METİN (Göz yormayan kirli beyaz ve koyu gri) */
+  --background: 210 40% 98%;   /* slate-50 */
+  --foreground: 222 47% 11%;   /* slate-900 */
+
+  /* KARTLAR & MODALLAR (Saf beyaz) */
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  /* ANA RENK (Emerald - Zümrüt Yeşili: Güven, Doğa) */
+  --primary: 158 64% 52%;      /* emerald-500 */
+  --primary-foreground: 144 80% 10%; /* Çok koyu yeşil metin */
+
+  /* İKİNCİL RENK (Amber - Kehribar: Hasat, Ticaret, Dikkat) */
+  --secondary: 43 96% 64%;     /* amber-400 */
+  --secondary-foreground: 26 80% 20%; /* Koyu kahve metin */
+
+  /* SİLİK & PASİF ELEMANLAR */
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  
+  /* VURGU & AKSAN */
+  --accent: 158 64% 95%;       /* Açık yeşil zemin */
+  --accent-foreground: 222 47% 11%;
+
+  /* TEHLİKE & HATA */
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  /* KENARLIKLAR & GİRİŞ ALANLARI */
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 158 64% 52%; /* Focus olduğunda primary renk yanar */
+
+  /* KÖŞE YUVARLAKLIĞI (Modern ve dostane) */
+  --radius: 0.75rem; /* 12px */
+}
+
+.dark {
+  /* DARK MODE ALTYAPISI */
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+
+  --card: 222 47% 11%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 158 64% 52%;
+  --primary-foreground: 144 80% 10%;
+
+  --secondary: 43 96% 64%;
+  --secondary-foreground: 26 80% 20%;
+
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 158 64% 52%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  * {
+    box-sizing: border-box;
+  }
+}

@@ -1,0 +1,243 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Kullanıcı Modeli
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String?   // Harici auth (OAuth) kullanılırsa boş olabilir
+  image         String?
+  role          String    @default("FARMER") // FARMER, WORKER, ENGINEER, BUSINESS, OPERATOR, SUPPLIER, ADMIN
+  
+  // Profil Bilgileri
+  phone         String?
+  city          String?
+  district      String?
+  bio           String?
+  certificates  String?   // Virgülle ayrılmış string veya JSON olabilir
+  crops         String?   // Yetiştirdiği ürünler (Örn: "Buğday, Mısır")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // İlişkiler
+  jobPostings   JobPosting[]
+  products      Product[]
+  messagesSent  Message[] @relation("SentMessages")
+  messagesReceived Message[] @relation("ReceivedMessages")
+  conversationsAsP1 Conversation[] @relation("ConversationParticipant1")
+  conversationsAsP2 Conversation[] @relation("ConversationParticipant2")
+  favorites     Favorite[]
+  favoriteGroups FavoriteGroup[]
+  
+  // Engelleme İlişkileri
+  blockedUsers  Block[]   @relation("UserBlocks")
+  blockedBy     Block[]   @relation("BlockedUsers")
+  
+  // Bildirimler
+  notifications Notification[]
+
+  // Şikayetler
+  reportsSubmitted Report[] @relation("SubmittedReports")
+  reportsReceived  Report[] @relation("ReceivedReports")
+
+  // Ban ve Kısıtlama Bilgileri
+  isBanned         Boolean    @default(false)
+  bannedUntil      DateTime?
+  banReason        String?
+  isRestricted     Boolean    @default(false)
+  restrictionReason String?
+  
+  // Duyurular
+  announcements Announcement[] @relation("CreatedAnnouncements")
+}
+
+// Bildirim Modeli
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  title     String
+  message   String
+  type      String   @default("INFO") // INFO, SUCCESS, WARNING, ERROR
+  isRead    Boolean  @default(false)
+  link      String?  // Bildirime tıklandığında gidilecek URL
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Engelleme Modeli
+model Block {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  blockerId String
+  blocker   User     @relation("UserBlocks", fields: [blockerId], references: [id])
+
+  blockedId String
+  blocked   User     @relation("BlockedUsers", fields: [blockedId], references: [id])
+
+  @@unique([blockerId, blockedId])
+}
+
+// Favori Grupları
+model FavoriteGroup {
+  id        String     @id @default(cuid())
+  name      String
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  favorites Favorite[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([userId, name])
+}
+
+// Favoriler Modeli
+model Favorite {
+  id            String      @id @default(cuid())
+  createdAt     DateTime    @default(now())
+  
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String
+
+  // Gruplandırma
+  groupId       String?
+  group         FavoriteGroup? @relation(fields: [groupId], references: [id])
+
+  // Optional relations
+  product       Product?    @relation(fields: [productId], references: [id])
+  productId     String?
+
+  jobPosting    JobPosting? @relation(fields: [jobPostingId], references: [id])
+  jobPostingId  String?
+
+  @@unique([userId, productId])
+  @@unique([userId, jobPostingId])
+}
+
+// İş İlanları (İstihdam Modülü)
+model JobPosting {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  location    String?   // @deprecated
+  city        String?
+  district    String?
+  contactPhone String? // New optional contact phone for the listing
+  wage        Float   // Ücret
+  currency    String    @default("TRY")
+  workType    String    // Tam zamanlı, Mevsimlik vb.
+  active      Boolean   @default(true)
+  images      String?   // Virgülle ayrılmış URL listesi
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // İlişkiler
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  favoritedBy Favorite[]
+  reports     Report[]
+}
+
+// Ürün İlanları (Market Modülü)
+model Product {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  price       Float
+  currency    String    @default("TRY")
+  category    String    // Tohum, Gübre, Traktör vb.
+  city        String?
+  district    String?
+  contactPhone String? // New optional contact phone for the listing
+  image       String?   // Ana görsel (Thumbnail)
+  images      String?   // Galeri görselleri (Virgülle ayrılmış URL listesi)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // İlişkiler
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  favoritedBy Favorite[]
+  reports     Report[]
+}
+
+// Mesajlaşma Modülleri
+model Conversation {
+  id              String    @id @default(cuid())
+  participant1Id  String
+  participant1    User      @relation("ConversationParticipant1", fields: [participant1Id], references: [id])
+  participant2Id  String
+  participant2    User      @relation("ConversationParticipant2", fields: [participant2Id], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  messages        Message[] @relation("ConversationMessages")
+
+  @@unique([participant1Id, participant2Id]) // İki kişi arasında tek sohbet
+}
+
+model Message {
+  id              String       @id @default(cuid())
+  content         String
+  isRead          Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+
+  senderId        String
+  sender          User         @relation("SentMessages", fields: [senderId], references: [id])
+  
+  receiverId      String?      // Direkt mesaja gerek yok, Conversation üzerinden
+  receiver        User?        @relation("ReceivedMessages", fields: [receiverId], references: [id]) // Yine de tutabiliriz ama Conversation daha merkezi
+
+  conversationId  String
+  conversation    Conversation @relation("ConversationMessages", fields: [conversationId], references: [id])
+}
+
+// Şikayet Modeli
+model Report {
+  id        String   @id @default(cuid())
+  reporterId String
+  reporter  User     @relation("SubmittedReports", fields: [reporterId], references: [id])
+  
+  reportedId String
+  reported  User     @relation("ReceivedReports", fields: [reportedId], references: [id])
+  
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id])
+  
+  jobPostingId String?
+  jobPosting JobPosting? @relation(fields: [jobPostingId], references: [id])
+  
+  reason    String
+  status    String   @default("PENDING") // PENDING, RESOLVED, DISMISSED
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Duyuru Modeli
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  authorId  String
+  author    User     @relation("CreatedAnnouncements", fields: [authorId], references: [id])
+  targetRoles String? // Virgülle ayrılmış roller (örn: "FARMER,BUSINESS") veya null ise herkese
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

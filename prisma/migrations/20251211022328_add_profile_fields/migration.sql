@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "User" ADD COLUMN "bio" TEXT;
+ALTER TABLE "User" ADD COLUMN "certificates" TEXT;
+ALTER TABLE "User" ADD COLUMN "city" TEXT;
+ALTER TABLE "User" ADD COLUMN "crops" TEXT;
+ALTER TABLE "User" ADD COLUMN "district" TEXT;
+ALTER TABLE "User" ADD COLUMN "phone" TEXT;
