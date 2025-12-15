@@ -4,6 +4,7 @@ import { Toaster as ShadcnToaster } from "@/components/ui/toaster";
 import { MasterHeader } from "@/components/layout/master-header";
 import { Footer } from "@/components/layout/footer";
 import { getCurrentUser } from "@/lib/auth";
+import { AutoLogoutProvider } from "@/components/providers/auto-logout-provider"; // Import eklendi
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -76,11 +77,13 @@ export default async function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
       </head>
       <body className={`${inter.variable} font-sans antialiased flex flex-col min-h-screen w-full overflow-x-hidden`}>
-        <MasterHeader user={user} />
-        <main className="flex-1 w-full overflow-x-hidden">{children}</main>
-        <Footer />
-        <Toaster richColors position="top-right" />
-        <ShadcnToaster />
+        <AutoLogoutProvider> {/* Tüm uygulamayı sarmaladık */}
+            <MasterHeader user={user} />
+            <main className="flex-1 w-full overflow-x-hidden">{children}</main>
+            <Footer />
+            <Toaster richColors position="top-right" />
+            <ShadcnToaster />
+        </AutoLogoutProvider>
       </body>
     </html>
   );

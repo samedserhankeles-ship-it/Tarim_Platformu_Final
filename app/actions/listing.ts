@@ -25,16 +25,11 @@ async function saveFile(file: File): Promise<string> {
   const bytes = await file.arrayBuffer();
   const buffer = Buffer.from(bytes);
 
-  // Benzersiz dosya adı oluştur
   const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-  // Dosya adındaki Türkçe karakterleri ve boşlukları temizle
   const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, ""); 
   const filename = `${uniqueSuffix}-${sanitizedName}`;
   
-  // public/uploads klasörüne kaydet
   const uploadDir = join(process.cwd(), "public", "uploads");
-  
-  // Klasör yoksa oluştur
   await mkdir(uploadDir, { recursive: true });
   
   const path = join(uploadDir, filename);
@@ -46,8 +41,20 @@ async function saveFile(file: File): Promise<string> {
 export async function fetchAllListingsAction(query: string): Promise<ListingData[]> {
   const currentUser = await getCurrentUser();
 
+  // Admin kontrolü kaldırıldı veya isteğe bağlı hale getirilebilir. 
+  // Şimdilik sadece adminlerin tüm ilanları çekmesi için kullanılıyorsa kalsın.
   if (!currentUser || currentUser.role !== "ADMIN") {
-    redirect("/"); // Redirect non-admins
+    // redirect("/"); // Redirect non-admins - KULLANICI ISTEGI: Banlı kullanıcılar da bakabilsin.
+    // İlanları listelemek herkese açık olmalı veya banlılar da görebilmeli.
+    // Ancak bu fonksiyon 'fetchAllListingsAction' muhtemelen admin panelinde kullanılıyor.
+    // Normal kullanıcılar için 'fetchListings' gibi başka bir fonksiyon olmalı.
+    // Eğer bu admin fonksiyonu ise, banlı kullanıcı zaten admin paneline girememeli (yetkisi yoksa).
+    // Admin rolündeki bir kullanıcı banlanırsa ne olur? Adminlik yetkisi devam eder mi?
+    // Mantıken banlanan admin işlem yapamaz.
+    // Burada admin kontrolü kalsın.
+    if (!currentUser || currentUser.role !== "ADMIN") {
+       redirect("/");
+    }
   }
 
   const whereClause: any = {};
@@ -105,6 +112,15 @@ export async function createListingAction(formData: FormData) {
     redirect("/auth/sign-in"); 
   }
 
+  // BAN KONTROLÜ
+  if (currentUser.isBanned && currentUser.bannedUntil && new Date(currentUser.bannedUntil) > new Date()) {
+    // throw new Error("Hesabınız yasaklandığı için ilan oluşturamazsınız.");
+    // Server action'da error fırlatmak yerine {success: false} dönmek daha iyi olabilir ama
+    // mevcut yapı try-catch ile error bekliyor olabilir.
+    // Edit form error'u toast ile gösteriyordu.
+    throw new Error("Hesabınız yasaklandığı için ilan oluşturamazsınız.");
+  }
+
   const type = formData.get("type") as string; 
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
@@ -113,7 +129,6 @@ export async function createListingAction(formData: FormData) {
   const contactPhone = formData.get("contactPhone") as string;
   const images = formData.getAll("images"); 
 
-  // Gerçek resim yükleme işlemi
   const imageUrls: string[] = [];
   for (const file of images) {
     if (file instanceof File && file.size > 0) {
@@ -164,7 +179,7 @@ export async function createListingAction(formData: FormData) {
           price,
           currency,
           category,
-          image: imageUrls.length > 0 ? imageUrls[0] : "", // İlk resmi ana görsel yap
+          image: imageUrls.length > 0 ? imageUrls[0] : "", 
           images: imagesString,
           userId: currentUser.id,
           active: true, 
@@ -177,7 +192,7 @@ export async function createListingAction(formData: FormData) {
     revalidatePath("/dashboard"); 
     revalidatePath("/explore"); 
 
-    redirect("/dashboard/ilanlarim"); // İlanlarım sayfasına yönlendir
+    redirect("/dashboard/ilanlarim"); 
 
   } catch (error) {
     console.error("İlan oluşturulurken hata oluştu:", error);
@@ -192,6 +207,11 @@ export async function updateListingAction(formData: FormData) {
     redirect("/auth/sign-in");
   }
 
+  // BAN KONTROLÜ
+  if (currentUser.isBanned && currentUser.bannedUntil && new Date(currentUser.bannedUntil) > new Date()) {
+    throw new Error("Hesabınız yasaklandığı için ilanı güncelleyemezsiniz.");
+  }
+
   const id = formData.get("id") as string;
   const type = formData.get("type") as string;
   const title = formData.get("title") as string;
@@ -200,7 +220,6 @@ export async function updateListingAction(formData: FormData) {
   const district = formData.get("district") as string;
   const contactPhone = formData.get("contactPhone") as string;
   
-  // 1. Yeni yüklenen resimleri al ve kaydet
   const newImageFiles = formData.getAll("images"); 
   const newImageUrls: string[] = [];
   for (const file of newImageFiles) {
@@ -214,10 +233,7 @@ export async function updateListingAction(formData: FormData) {
     }
   }
 
-  // 2. Mevcut resimleri al (hidden inputlardan)
   const existingImages = formData.getAll("existingImages") as string[];
-
-  // 3. Tüm resimleri birleştir
   const allImages = [...existingImages, ...newImageUrls];
   const imagesString = allImages.join(",");
 
@@ -226,7 +242,6 @@ export async function updateListingAction(formData: FormData) {
       const wage = parseFloat(formData.get("wage") as string);
       const currency = formData.get("currency") as string || "TRY";
       const workType = formData.get("workType") as string;
-      // const active = formData.get("active") === "on"; // Aktif durumu buradan güncellenmeyebilir, şimdilik dokunmayalım veya hidden input varsa alalım
 
       await prisma.jobPosting.update({
         where: { id: id, userId: currentUser.id }, 
@@ -240,14 +255,12 @@ export async function updateListingAction(formData: FormData) {
           currency,
           workType,
           images: imagesString,
-          // active, 
         },
       });
     } else if (type === "product") {
       const price = parseFloat(formData.get("price") as string);
       const currency = formData.get("currency") as string || "TRY";
       const category = (formData.get("category") as string) || ""; 
-      // const active = formData.get("active") === "on";
 
       await prisma.product.update({
         where: { id: id, userId: currentUser.id }, 
@@ -260,9 +273,8 @@ export async function updateListingAction(formData: FormData) {
           price,
           currency,
           category,
-          image: allImages.length > 0 ? allImages[0] : "", // İlk resmi ana görsel yap
+          image: allImages.length > 0 ? allImages[0] : "", 
           images: imagesString,
-          // active,
         },
       });
     } else {

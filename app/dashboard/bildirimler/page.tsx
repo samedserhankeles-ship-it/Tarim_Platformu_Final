@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Bell, CheckCircle, AlertTriangle, Info, Clock } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { markNotificationsAsReadAction } from "@/app/actions/notification"; // Import the action
+import { MarkNotificationsAsRead } from "@/components/notifications/mark-read-client"; // Import Client Component
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +16,8 @@ export default async function NotificationsPage() {
     redirect("/auth/sign-in");
   }
 
-  // Mark all unread notifications for this user as read upon page load
-  await markNotificationsAsReadAction();
+  // Bildirimleri okundu olarak işaretleme işini Client Component'e devrettik.
+  // Bu sayede render sırasında revalidatePath hatası almayacağız.
 
   const notifications = await prisma.notification.findMany({
     where: {
@@ -39,6 +39,8 @@ export default async function NotificationsPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
+      <MarkNotificationsAsRead /> {/* Client-side action trigger */}
+      
       <div className="flex items-center gap-3 mb-6">
         <div className="bg-emerald-100 p-2 rounded-full">
             <Bell className="h-6 w-6 text-emerald-700" />

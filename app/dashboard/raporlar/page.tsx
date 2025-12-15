@@ -2,7 +2,7 @@
 
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DollarSign, MessageSquare, Package, Eye, Filter } from "lucide-react";
+import { DollarSign, MessageSquare, Package, Eye, Filter, PackageX } from "lucide-react"; // PackageX eklendi
 import { getReportStats, getMonthlyActivity, getUserListingsForReports } from "@/app/actions/raporlar";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -10,9 +10,9 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts';
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; // Assuming this table component exists
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"; 
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8']; // for charts
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8']; 
 
 export default function ReportsPage() {
   const [stats, setStats] = useState<any>(null);
@@ -49,7 +49,6 @@ export default function ReportsPage() {
     return <div className="flex justify-center items-center h-48 text-destructive">Rapor verileri yüklenemedi veya oturum açılmadı.</div>;
   }
 
-  // İlan durumu dağılımı için mock data (gerçekte DB'den çekilmeli)
   const listingStatusData = [
     { name: 'Aktif', value: stats.activeListings },
     { name: 'Pasif', value: stats.totalListings - stats.activeListings },
@@ -79,6 +78,21 @@ export default function ReportsPage() {
             </p>
           </CardContent>
         </Card>
+        
+        {/* Pasif İlanlar Kartı (Yeni) */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pasif İlanlar</CardTitle>
+            <PackageX className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalListings - stats.activeListings}</div>
+            <p className="text-xs text-muted-foreground">
+              Yayında olmayan ilanlarınız
+            </p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Toplam Görüntülenme</CardTitle>
@@ -103,20 +117,6 @@ export default function ReportsPage() {
             </p>
           </CardContent>
         </Card>
-        {stats.estimatedRevenue !== null && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Toplam Kazanç (Tahmini)</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₺{stats.estimatedRevenue}</div>
-            <p className="text-xs text-muted-foreground">
-              Aktif ürün satışlarından
-            </p>
-          </CardContent>
-        </Card>
-        )}
       </div>
 
       {/* Grafik Alanları */}
@@ -177,7 +177,6 @@ export default function ReportsPage() {
             <CardTitle>Verilen İlanlar</CardTitle>
             <CardDescription>Oluşturduğunuz tüm ilanların detaylı listesi.</CardDescription>
           </div>
-          {/* Export button placeholder */}
           <Button variant="outline" size="sm">Dışa Aktar (CSV)</Button>
         </CardHeader>
         <CardContent>
@@ -225,7 +224,6 @@ export default function ReportsPage() {
           </div>
         </CardContent>
         <CardFooter>
-          {/* Pagination or more info */}
         </CardFooter>
       </Card>
     </div>

@@ -38,13 +38,11 @@ export async function getCurrentUser() {
     if (!user) return null
 
     // Check if user is currently banned
+    // ARTIK BANLI KULLANICILARI NULL DÖNDÜRMÜYORUZ.
+    // Sadece konsola uyarı basıyoruz, kısıtlamaları action'larda yapacağız.
     if (user.isBanned && user.bannedUntil && new Date(user.bannedUntil) > new Date()) {
-        // User is banned and ban period is not over
-        console.warn(`Banned user tried to log in: ${user.email}`);
-        // Optionally, clear the session cookie to force re-login
-        // cookies().delete("session_user_id"); 
-        // For now, just return null, forcing UI to treat as logged out
-        return null;
+        console.warn(`Banned user logged in: ${user.email}`);
+        // return null; // KALDIRILDI: Banlı kullanıcılar da siteye girebilir.
     }
 
     // Fetch unread notification count

@@ -57,6 +57,7 @@ model User {
   banReason        String?
   isRestricted     Boolean    @default(false)
   restrictionReason String?
+  restrictedUntil   DateTime?
   
   // Duyurular
   announcements Announcement[] @relation("CreatedAnnouncements")

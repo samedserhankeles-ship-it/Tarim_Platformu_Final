@@ -3,8 +3,9 @@
 import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
+import { getCurrentUser } from "@/lib/auth" // getCurrentUser import edildi
 
-// Kullanıcının ID'sini almak için yardımcı
+// Helper to get user ID (deprecated in favor of getCurrentUser for more info)
 async function getUserId() {
   const cookieStore = await cookies()
   return cookieStore.get("session_user_id")?.value
@@ -12,12 +13,27 @@ async function getUserId() {
 
 // 1. Yeni Mesaj Gönder (veya Sohbet Başlat)
 export async function sendMessageAction(receiverId: string, content: string) {
-  const senderId = await getUserId()
-  if (!senderId) return { success: false, message: "Oturum açmanız gerekiyor." }
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return { success: false, message: "Oturum açmanız gerekiyor." }
+  
+  const senderId = currentUser.id;
   if (!content.trim()) return { success: false, message: "Mesaj boş olamaz." }
 
   try {
-    // Önce mevcut sohbeti bulmaya çalış (Sender veya Receiver yer değiştirebilir)
+    // BAN KONTROLÜ
+    if (currentUser.isBanned && currentUser.bannedUntil && new Date(currentUser.bannedUntil) > new Date()) {
+        // Alıcının rolünü kontrol et
+        const receiver = await prisma.user.findUnique({
+            where: { id: receiverId },
+            select: { role: true }
+        });
+
+        if (!receiver || receiver.role !== "ADMIN") {
+            return { success: false, message: "Hesabınız yasaklandığı için sadece yöneticilerle iletişime geçebilirsiniz." };
+        }
+    }
+
+    // Önce mevcut sohbeti bulmaya çalış
     let conversation = await prisma.conversation.findFirst({
       where: {
         OR: [
@@ -47,7 +63,7 @@ export async function sendMessageAction(receiverId: string, content: string) {
       },
     });
 
-    // Güncelleme: Sohbetin updatedAt zamanını güncelle (Listede yukarı çıksın)
+    // Sohbetin updatedAt zamanını güncelle
     await prisma.conversation.update({
       where: { id: conversation.id },
       data: { updatedAt: new Date() },
@@ -72,7 +88,6 @@ export async function sendMessageAction(receiverId: string, content: string) {
     }
 
     revalidatePath("/dashboard/mesajlar")
-    // Also revalidate the notifications page to update the count
     revalidatePath("/dashboard/bildirimler")
     return { success: true, message: "Mesaj gönderildi." }
 
@@ -143,6 +158,37 @@ export async function getMessages(conversationId: string) {
         sender: { select: { id: true, name: true, image: true } }
     }
   })
+
+  // OKUNDU İŞARETLEME MANTIĞI
+  // 1. Bu sohbette, karşı tarafın attığı ve henüz okunmamış mesajları bul ve güncelle
+  const unreadMessagesCount = messages.filter(m => m.receiverId === userId && !m.isRead).length;
+
+  if (unreadMessagesCount > 0) {
+    // Mesajları okundu yap
+    await prisma.message.updateMany({
+      where: {
+        conversationId: conversationId,
+        receiverId: userId,
+        isRead: false
+      },
+      data: { isRead: true }
+    });
+
+    // 2. Bu sohbetle ilgili bildirimleri de okundu yap (veya silinebilir, şimdilik okundu yapalım)
+    // Bildirim linki: /dashboard/mesajlar?conv=...
+    const listingLink = `/dashboard/mesajlar?conv=${conversationId}`;
+    
+    await prisma.notification.updateMany({
+        where: {
+            userId: userId,
+            link: listingLink,
+            isRead: false
+        },
+        data: { isRead: true }
+    });
+    
+    // revalidatePath("/dashboard/bildirimler"); // Render sırasında çağrılamaz, kaldırıldı.
+  }
 
   return messages
 }
