@@ -57,12 +57,23 @@ export async function loginAction(formData: FormData) {
   export async function signUpAction(formData: FormData) {
     const firstName = formData.get("firstName") as string
     const lastName = formData.get("lastName") as string
+    const companyName = formData.get("companyName") as string
     const email = formData.get("email") as string
     const password = formData.get("password") as string
-    const role = formData.get("role") as string // "farmer", "operator", "merchant"
+    const role = formData.get("role") as string // "farmer", "operator", "business"
   
-    if (!firstName || !lastName || !email || !password || !role) {
-      return { success: false, message: "Lütfen tüm alanları doldurun." }
+    // Rol'e göre isim alanını belirle
+    let finalName: string;
+    if (role === "business") {
+        finalName = companyName;
+        if (!finalName || !email || !password || !role) {
+            return { success: false, message: "Lütfen tüm İşletme Adı, E-posta ve Şifre alanlarını doldurun." }
+        }
+    } else {
+        finalName = `${firstName} ${lastName}`;
+        if (!firstName || !lastName || !email || !password || !role) {
+            return { success: false, message: "Lütfen tüm Ad, Soyad, E-posta ve Şifre alanlarını doldurun." }
+        }
     }
   
     try {
@@ -78,7 +89,7 @@ export async function loginAction(formData: FormData) {
       // Yeni kullanıcı oluştur
       const user = await prisma.user.create({
         data: {
-          name: `${firstName} ${lastName}`,
+          name: finalName,
           email,
           password, // Demo: Hashlemeden kaydediyoruz. Gerçekte bcrypt kullanılmalı.
           role: role.toUpperCase(), // FARMER, OPERATOR vb.

@@ -7,11 +7,13 @@ import { useState, useTransition } from "react";
 import { TermsModal } from "@/components/auth/TermsModal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input"; // Input componentini import et
 
 export default function SignUpPage() {
   const [isPending, startTransition] = useTransition();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [selectedRole, setSelectedRole] = useState("farmer"); // Rolü takip etmek için state
 
   async function handleSubmit(formData: FormData) {
     setErrorMessage(null);
@@ -20,6 +22,23 @@ export default function SignUpPage() {
       setErrorMessage("Kayıt olabilmek için sözleşmeleri kabul etmelisiniz.");
       return;
     }
+
+    // Seçilen role göre alanların dolu olup olmadığını kontrol et
+    if (selectedRole === "business") {
+      const companyName = formData.get("companyName") as string;
+      if (!companyName || companyName.trim() === "") {
+        setErrorMessage("İşletme Adı boş bırakılamaz.");
+        return;
+      }
+    } else {
+      const firstName = formData.get("firstName") as string;
+      const lastName = formData.get("lastName") as string;
+      if (!firstName || firstName.trim() === "" || !lastName || lastName.trim() === "") {
+        setErrorMessage("Ad ve Soyad boş bırakılamaz.");
+        return;
+      }
+    }
+
 
     startTransition(async () => {
       const result = await signUpAction(formData);
@@ -54,21 +73,42 @@ export default function SignUpPage() {
           {/* Rol Seçimi */}
           <div className="grid grid-cols-3 gap-2">
             <label className="cursor-pointer">
-              <input type="radio" name="role" value="farmer" className="peer sr-only" defaultChecked />
+              <input 
+                type="radio" 
+                name="role" 
+                value="farmer" 
+                className="peer sr-only" 
+                checked={selectedRole === "farmer"} 
+                onChange={(e) => setSelectedRole(e.target.value)} 
+              />
               <div className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-checked:border-primary peer-checked:bg-primary/5 transition-all">
                 <Users className="mb-2 h-6 w-6" />
                 <span className="text-xs font-semibold">Çiftçi</span>
               </div>
             </label>
             <label className="cursor-pointer">
-              <input type="radio" name="role" value="operator" className="peer sr-only" />
+              <input 
+                type="radio" 
+                name="role" 
+                value="operator" 
+                className="peer sr-only" 
+                checked={selectedRole === "operator"} 
+                onChange={(e) => setSelectedRole(e.target.value)} 
+              />
               <div className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-checked:border-primary peer-checked:bg-primary/5 transition-all">
                 <Tractor className="mb-2 h-6 w-6" />
                 <span className="text-xs font-semibold">Operatör</span>
               </div>
             </label>
             <label className="cursor-pointer">
-              <input type="radio" name="role" value="merchant" className="peer sr-only" />
+              <input 
+                type="radio" 
+                name="role" 
+                value="business" 
+                className="peer sr-only" 
+                checked={selectedRole === "business"} 
+                onChange={(e) => setSelectedRole(e.target.value)} 
+              />
               <div className="flex flex-col items-center justify-center rounded-lg border-2 border-muted bg-popover p-2 hover:bg-accent hover:text-accent-foreground peer-checked:border-primary peer-checked:bg-primary/5 transition-all">
                 <Briefcase className="mb-2 h-6 w-6" />
                 <span className="text-xs font-semibold">İşletme</span>
@@ -76,25 +116,32 @@ export default function SignUpPage() {
             </label>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          {selectedRole === "business" ? (
             <div className="space-y-2">
-              <label htmlFor="firstName" className="text-sm font-medium leading-none">Ad</label>
-              <input id="firstName" name="firstName" placeholder="Adınız" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
+              <Label htmlFor="companyName" className="text-sm font-medium leading-none">İşletme Adı</Label>
+              <Input id="companyName" name="companyName" placeholder="İşletmenizin Adı" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
             </div>
-            <div className="space-y-2">
-              <label htmlFor="lastName" className="text-sm font-medium leading-none">Soyad</label>
-              <input id="lastName" name="lastName" placeholder="Soyadınız" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName" className="text-sm font-medium leading-none">Ad</Label>
+                <Input id="firstName" name="firstName" placeholder="Adınız" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lastName" className="text-sm font-medium leading-none">Soyad</Label>
+                <Input id="lastName" name="lastName" placeholder="Soyadınız" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
+              </div>
             </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-medium leading-none">E-posta</Label>
+            <Input id="email" name="email" type="email" placeholder="ornek@tarim.com" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="email" className="text-sm font-medium leading-none">E-posta</label>
-            <input id="email" name="email" type="email" placeholder="ornek@tarim.com" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="password" className="text-sm font-medium leading-none">Şifre</label>
-            <input id="password" name="password" type="password" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
+            <Label htmlFor="password" className="text-sm font-medium leading-none">Şifre</Label>
+            <Input id="password" name="password" type="password" className="flex h-12 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" required />
           </div>
 
           {/* Sözleşme Onayı */}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useRef } from "react"
+import { useState, useTransition } from "react"
 import { updateUserProfileAction } from "@/app/actions/profile"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,17 +15,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Camera, Save, Loader2 } from "lucide-react"
+import { Save, Loader2, Image as ImageIcon } from "lucide-react"
 import { toast } from "sonner"
 import { AVAILABLE_ROLES } from "@/lib/roles"
+import { ImageUploadField } from "@/components/ImageUploadField" // Yeni ImageUploadField bileşeni
 
-export default function ProfileForm({ user }: { user: any }) {
+export default function ProfileForm({ user }: { user: any }) { // user tipi daha spesifik hale getirilebilir
   const [isPending, startTransition] = useTransition()
-  const [preview, setPreview] = useState<string | null>(user.image)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  
   const [role, setRole] = useState<string>(user.role || "FARMER")
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  
 
   // İsim ayrıştırma (Basitçe)
   const splitName = (fullName: string | null) => {
@@ -39,41 +38,23 @@ export default function ProfileForm({ user }: { user: any }) {
 
   const { first, last } = splitName(user.name)
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      console.log("File selected:", file.name, file.size, file.type)
-      setSelectedFile(file)
-      const url = URL.createObjectURL(file)
-      setPreview(url)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     
     const formData = new FormData(e.currentTarget)
     
-    // File'ı state'ten veya input'tan al ve FormData'ya ekle
-    if (selectedFile) {
-      formData.set("image", selectedFile)
-      console.log("Image added to formData from state:", selectedFile.name, selectedFile.size)
-    } else {
-      const fileInput = fileInputRef.current
-      if (fileInput && fileInput.files && fileInput.files[0]) {
-        formData.set("image", fileInput.files[0])
-        console.log("Image added to formData from input:", fileInput.files[0].name)
-      } else {
-        console.log("No file selected")
-      }
-    }
+    // ImageUploadField bileşeni, input'un name prop'u sayesinde dosyaları
+    // doğrudan formData'ya ekleyecektir. Burada ekstra formData.set() yapmaya gerek yok.
+    // Ancak, eğer ImageUploadField içinde dosya seçilmezse, formData'ya eklenmez.
+    // Bu durumda updateUserProfileAction içinde mevcut resmin korunması mantığı işlemelidir.
+    // (ki bu zaten handle ediliyor.)
 
     startTransition(async () => {
       try {
         const result = await updateUserProfileAction(formData)
         if (result.success) {
           toast.success(result.message)
-          // Başarılı olursa sayfayı yenile (yeni resmi görmek için)
+          // Başarılı olursa sayfayı yenile (yeni resimleri görmek için)
           setTimeout(() => {
             window.location.reload()
           }, 1000)
@@ -165,6 +146,25 @@ export default function ProfileForm({ user }: { user: any }) {
             </CardContent>
           </Card>
 
+          {role === "BUSINESS" && (
+            <Card>
+                <CardHeader>
+                    <CardTitle>İşletme Bilgileri</CardTitle>
+                    <CardDescription>İşletmenize ait detayları girin.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="website">Web Sitesi</Label>
+                        <Input id="website" name="website" type="url" defaultValue={user.website || ""} placeholder="https://ornek.com" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="addressDetail">Açık Adres</Label>
+                        <Textarea id="addressDetail" name="addressDetail" defaultValue={user.addressDetail || ""} placeholder="Mahalle, Sokak, No..." className="min-h-[80px]" />
+                    </div>
+                </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Adres Bilgileri</CardTitle>
@@ -199,34 +199,36 @@ export default function ProfileForm({ user }: { user: any }) {
           </Card>
         </div>
 
-        {/* Sidebar / Avatar Area */}
+        {/* Sidebar / Avatar & Cover Image Area */}
         <div className="flex flex-col gap-6">
           <Card className="overflow-hidden">
-            <CardHeader className="bg-muted/50 pb-8 pt-8 text-center">
-              <div className="mx-auto relative mb-4 h-32 w-32 rounded-full border-4 border-background bg-primary/20 flex items-center justify-center group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                <Avatar className="h-full w-full">
-                   <AvatarImage src={preview || undefined} className="object-cover" />
-                   <AvatarFallback className="text-4xl">
-                     {first ? first[0].toUpperCase() : "U"}
-                     {last ? last[0].toUpperCase() : ""}
-                   </AvatarFallback>
-                </Avatar>
-                
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="text-white h-8 w-8" />
-                </div>
-                
-                <input 
-                    type="file" 
-                    name="image" 
-                    ref={fileInputRef} 
-                    className="hidden" 
-                    accept="image/*"
-                    onChange={handleImageChange}
+            <CardHeader className="bg-muted/50 pb-8 pt-8 text-center relative">
+              {/* Cover Image */}
+              <div className="absolute inset-x-0 top-0 h-32">
+                <ImageUploadField 
+                  id="coverImageUpload"
+                  name="coverImage"
+                  label="Banner Resmi"
+                  defaultValue={user.coverImage}
+                  variant="banner"
+                  currentValue={user.coverImage}
                 />
               </div>
-              <CardTitle>{user.name}</CardTitle>
+
+              {/* Avatar */}
+              <div className="relative z-10 mx-auto -mt-16 h-32 w-32 rounded-full border-4 border-background bg-primary/20 flex items-center justify-center">
+                <ImageUploadField 
+                  id="avatarUpload"
+                  name="image"
+                  label="Profil Fotoğrafı"
+                  defaultValue={user.image}
+                  variant="avatar"
+                  fallbackText={`${first ? first[0].toUpperCase() : "U"}${last ? last[0].toUpperCase() : ""}`}
+                  currentValue={user.image}
+                />
+              </div>
+              
+              <CardTitle className="mt-4">{user.name}</CardTitle>
               <CardDescription>{user.role}</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
@@ -242,9 +244,6 @@ export default function ProfileForm({ user }: { user: any }) {
                   </span>
                 </div>
               </div>
-              <Button variant="outline" className="w-full mt-4" type="button" onClick={() => fileInputRef.current?.click()}>
-                Fotoğraf Değiştir
-              </Button>
             </CardContent>
           </Card>
         </div>

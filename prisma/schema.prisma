@@ -17,7 +17,8 @@ model User {
   email         String    @unique
   password      String?   // Harici auth (OAuth) kullanılırsa boş olabilir
   image         String?
-  role          String    @default("FARMER") // FARMER, WORKER, ENGINEER, BUSINESS, OPERATOR, SUPPLIER, ADMIN
+  coverImage    String?
+  role          String    @default("FARMER") // FARMER, BUSINESS, OPERATOR, ADMIN
   
   // Profil Bilgileri
   phone         String?
@@ -25,6 +26,8 @@ model User {
   district      String?
   bio           String?
   certificates  String?   // Virgülle ayrılmış string veya JSON olabilir
+  website       String?   // İşletme web sitesi
+  addressDetail String?   // Açık adres
   crops         String?   // Yetiştirdiği ürünler (Örn: "Buğday, Mısır")
 
   createdAt     DateTime  @default(now())

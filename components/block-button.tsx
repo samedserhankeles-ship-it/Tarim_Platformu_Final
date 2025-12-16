@@ -20,9 +20,18 @@ import {
 interface BlockButtonProps {
   userId: string;
   initialIsBlocked: boolean; // Is the user currently blocked BY the current user?
+  className?: string;
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: "default" | "sm" | "lg" | "icon";
 }
 
-export default function BlockButton({ userId, initialIsBlocked }: BlockButtonProps) {
+export default function BlockButton({ 
+    userId, 
+    initialIsBlocked, 
+    className = "",
+    variant = "ghost",
+    size = "sm"
+}: BlockButtonProps) {
   const [isBlocked, setIsBlocked] = useState(initialIsBlocked);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
@@ -69,8 +78,8 @@ export default function BlockButton({ userId, initialIsBlocked }: BlockButtonPro
       return (
         <Button 
             variant="outline" 
-            size="sm" 
-            className="w-full text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600 border-dashed"
+            size={size}
+            className={`text-muted-foreground hover:bg-emerald-50 hover:text-emerald-600 border-dashed ${className}`}
             onClick={handleUnblock}
             disabled={isPending}
         >
@@ -84,12 +93,12 @@ export default function BlockButton({ userId, initialIsBlocked }: BlockButtonPro
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button 
-            variant="ghost" 
-            size="sm" 
-            className="w-full text-muted-foreground hover:text-red-600 hover:bg-red-50"
+            variant={variant} 
+            size={size}
+            className={`text-muted-foreground hover:text-red-600 hover:bg-red-50 ${className}`}
         >
             <Ban className="mr-2 h-4 w-4" />
-            Kullanıcıyı Engelle
+            Engelle
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

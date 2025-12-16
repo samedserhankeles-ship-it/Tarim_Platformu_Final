@@ -164,7 +164,8 @@ export default async function ExplorePage(props: {
             image: p.image || (isBarter ? "https://placehold.co/400x300/purple/white?text=Takas" : "https://placehold.co/400x300/green/white?text=Urun"),
             category: p.category,
             isBarter: isBarter,
-            userName: p.user.name || "Kullanıcı"
+            userName: p.user.name || "Kullanıcı",
+            userId: p.user.id
         };
     }), 
 
@@ -180,7 +181,8 @@ export default async function ExplorePage(props: {
         image: "https://placehold.co/400x300/blue/white?text=Is+Ilani",
         category: "İş Gücü",
         isBarter: false,
-        userName: j.user.name || "İşveren"
+        userName: j.user.name || "İşveren",
+        userId: j.user.id
       };
     }), 
   ];
@@ -258,9 +260,9 @@ export default async function ExplorePage(props: {
                     </div>
                     </CardContent>
                     <CardFooter className="p-4 pt-0 mt-auto border-t bg-muted/10 flex justify-between items-center text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
+                        <Link href={`/profil/${item.userId}`} className="flex items-center gap-1 hover:underline hover:text-primary transition-colors z-10">
                             <Briefcase className="h-3 w-3" /> {item.userName}
-                        </span>
+                        </Link>
                         <Link href={`/ilan/${item.id}`}>
                           <Button size="sm" className={`h-8 ${item.isBarter ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}`} variant={item.isBarter ? 'default' : 'secondary'}>
                               İncele

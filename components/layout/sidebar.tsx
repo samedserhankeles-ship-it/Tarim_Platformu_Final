@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, MessageSquare, Settings, LogOut, BarChart3, ShoppingBag, Users, Flag, FileStack, Megaphone, Mail, Sprout, Home } from "lucide-react"; // Import Mail
+import { LayoutDashboard, FileText, MessageSquare, Settings, LogOut, BarChart3, ShoppingBag, Users, Flag, FileStack, Megaphone, Mail, Sprout, Home, Store } from "lucide-react"; // Store ikonu eklendi
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -34,7 +34,7 @@ type UserType = {
 function SidebarContent({ user, pathname, isMobile }: { user: UserType; pathname: string; isMobile?: boolean }) {
   const dynamicSidebarItems = [...sidebarItems]; // Create a mutable copy
 
-  // Conditionally add Admin links
+  // Admin linklerini koşullu olarak ekle
   if (user && user.role === "ADMIN") {
     const settingsIndex = dynamicSidebarItems.findIndex(item => item.label === "Ayarlar");
     const reportsItem = {
@@ -65,19 +65,36 @@ function SidebarContent({ user, pathname, isMobile }: { user: UserType; pathname
 
 
     if (settingsIndex !== -1) {
-        // Insert in reverse order to maintain correct final positions with splice
+        // Doğru sıralamayı korumak için ters sırayla ekle
         dynamicSidebarItems.splice(settingsIndex, 0, reportsItem);
         dynamicSidebarItems.splice(settingsIndex, 0, userQueryItem);
-        dynamicSidebarItems.splice(settingsIndex, 0, bulkMessagesAdminItem); // New item
+        dynamicSidebarItems.splice(settingsIndex, 0, bulkMessagesAdminItem);
         dynamicSidebarItems.splice(settingsIndex, 0, announcementsAdminItem);
         dynamicSidebarItems.splice(settingsIndex, 0, listingsAdminItem);
     } else {
-        // Fallback: if "Ayarlar" is not found, just push to the end
+        // Fallback: "Ayarlar" bulunamazsa sona ekle
         dynamicSidebarItems.push(listingsAdminItem);
         dynamicSidebarItems.push(announcementsAdminItem);
-        dynamicSidebarItems.push(bulkMessagesAdminItem); // New item
+        dynamicSidebarItems.push(bulkMessagesAdminItem);
         dynamicSidebarItems.push(userQueryItem);
         dynamicSidebarItems.push(reportsItem);
+    }
+  }
+
+  // İşletme rolü için "Mağazam" ve "Mağaza Ayarları" linklerini ekle
+  if (user && user.role === "BUSINESS") {
+    const ilanlarimIndex = dynamicSidebarItems.findIndex(item => item.label === "İlanlarım");
+    if (ilanlarimIndex !== -1) {
+      dynamicSidebarItems.splice(ilanlarimIndex + 1, 0, {
+        icon: Store,
+        label: "Mağazam",
+        href: `/profil/${user.id}`, // Kendi profil sayfasına yönlendir (Herkese açık mağaza sayfası)
+      });
+      dynamicSidebarItems.splice(ilanlarimIndex + 2, 0, { // "Mağazam"ın hemen altına
+        icon: Settings, // Ayarlar ikonu
+        label: "Mağaza Ayarları",
+        href: "/dashboard/magaza", // Yeni oluşturulan mağaza ayarları sayfasına yönlendir
+      });
     }
   }
 

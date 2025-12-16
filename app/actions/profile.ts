@@ -25,20 +25,29 @@ export async function updateUserProfileAction(formData: FormData) {
   const district = formData.get("district") as string;
   const crops = formData.get("crops") as string; // Virgülle ayrılmış ürünler
   const certificates = formData.get("certificates") as string; // Virgülle ayrılmış sertifikalar
+  const website = formData.get("website") as string;
+  const addressDetail = formData.get("addressDetail") as string;
   const imageFile = formData.get("image") as File | null;
+  const coverImageFile = formData.get("coverImage") as File | null; // Yeni: Cover Image
 
   console.log("Image file received:", imageFile ? {
     name: imageFile.name,
     size: imageFile.size,
     type: imageFile.type
   } : "No file");
+  console.log("Cover Image file received:", coverImageFile ? {
+    name: coverImageFile.name,
+    size: coverImageFile.size,
+    type: coverImageFile.type
+  } : "No file");
 
   // İsim birleştirme (eğer firstName ve lastName varsa)
   const fullName = firstName && lastName ? `${firstName} ${lastName}` : name;
 
   let imageUrl = currentUser.image; // Mevcut resmi koru
+  let coverImageUrl = currentUser.coverImage; // Mevcut cover resmini koru
 
-  // Resim yükleme işlemi
+  // Resim yükleme işlemi (Avatar)
   if (imageFile && imageFile.size > 0 && imageFile instanceof File) {
     try {
       const bytes = await imageFile.arrayBuffer();
@@ -46,10 +55,10 @@ export async function updateUserProfileAction(formData: FormData) {
 
       // Dosya uzantısı
       const ext = imageFile.name.split('.').pop() || 'jpg';
-      const filename = `${currentUser.id}-${Date.now()}.${ext}`;
+      const filename = `${currentUser.id}-${Date.now()}-avatar.${ext}`;
       
       // Upload klasörünü oluştur
-      const uploadDir = join(process.cwd(), 'public', 'uploads', 'users');
+      const uploadDir = join(process.cwd(), 'public', 'uploads', 'users'); // Banners için ayrı bir klasör de olabilir
       if (!existsSync(uploadDir)) {
         await mkdir(uploadDir, { recursive: true });
       }
@@ -62,12 +71,44 @@ export async function updateUserProfileAction(formData: FormData) {
       imageUrl = `/uploads/users/${filename}`;
       console.log("Image saved to:", imageUrl);
     } catch (error) {
-      console.error("Resim yükleme hatası:", error);
-      return { success: false, message: `Resim yüklenirken bir hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}` };
+      console.error("Resim yükleme hatası (Avatar):", error);
+      return { success: false, message: `Avatar yüklenirken bir hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}` };
     }
   } else {
-    console.log("No image file to upload or file is empty");
+    console.log("No avatar file to upload or file is empty");
   }
+
+  // Resim yükleme işlemi (Cover Image / Banner)
+  if (coverImageFile && coverImageFile.size > 0 && coverImageFile instanceof File) {
+    try {
+      const bytes = await coverImageFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+
+      // Dosya uzantısı
+      const ext = coverImageFile.name.split('.').pop() || 'jpg';
+      const filename = `${currentUser.id}-${Date.now()}-cover.${ext}`;
+      
+      // Upload klasörünü oluştur
+      const uploadDir = join(process.cwd(), 'public', 'uploads', 'users'); // Banners için ayrı bir klasör de olabilir
+      if (!existsSync(uploadDir)) {
+        await mkdir(uploadDir, { recursive: true });
+      }
+
+      // Dosyayı kaydet
+      const filepath = join(uploadDir, filename);
+      await writeFile(filepath, buffer);
+
+      // URL'i oluştur
+      coverImageUrl = `/uploads/users/${filename}`; // `/uploads/banners/${filename}` de olabilir
+      console.log("Cover Image saved to:", coverImageUrl);
+    } catch (error) {
+      console.error("Resim yükleme hatası (Cover Image):", error);
+      return { success: false, message: `Banner yüklenirken bir hata oluştu: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}` };
+    }
+  } else {
+    console.log("No cover image file to upload or file is empty");
+  }
+
 
   try {
     // Email değiştiriliyorsa ve farklı bir email ise, başka kullanıcıda kullanılıyor mu kontrol et
@@ -93,12 +134,16 @@ export async function updateUserProfileAction(formData: FormData) {
         district,
         crops,
         certificates,
+        website,
+        addressDetail,
         image: imageUrl,
+        coverImage: coverImageUrl, // Yeni: coverImage
       },
     });
 
     revalidatePath("/dashboard/settings"); // Ayarlar sayfasını güncelle
     revalidatePath("/dashboard/profil"); // Profil sayfasını güncelle
+    revalidatePath(`/profil/${currentUser.id}`); // Herkese açık profil sayfasını güncelle
 
     return { success: true, message: "Profiliniz başarıyla güncellendi." };
   } catch (error: any) {
@@ -121,7 +166,7 @@ export async function getUserProfile() {
   }
 
   // Return a subset of user data relevant for profile display
-  const { id, name, email, image, phone, bio, city, district, crops, certificates, role, createdAt, updatedAt } = currentUser;
+  const { id, name, email, image, phone, bio, city, district, crops, certificates, website, addressDetail, role, createdAt, updatedAt, coverImage } = currentUser;
 
-  return { id, name, email, image, phone, bio, city, district, crops, certificates, role, createdAt, updatedAt };
+  return { id, name, email, image, phone, bio, city, district, crops, certificates, website, addressDetail, role, createdAt, updatedAt, coverImage };
 }

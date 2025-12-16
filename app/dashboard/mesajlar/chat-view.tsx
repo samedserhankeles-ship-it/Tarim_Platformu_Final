@@ -9,6 +9,7 @@ import { Send, Loader2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import BlockButton from "@/components/block-button"
 import ReportButton from "@/components/report-button"; // Import ReportButton
+import Link from "next/link"; // Link bileşeni eklendi
 
 export default function ChatView({ conversationId, partner, initialMessages, initialIsBlocked, isLoggedIn }: { conversationId: string, partner: any, initialMessages: any[], initialIsBlocked: boolean, isLoggedIn: boolean }) {
   const [messages, setMessages] = useState(initialMessages)
@@ -65,13 +66,13 @@ export default function ChatView({ conversationId, partner, initialMessages, ini
     <div className="flex flex-col h-full">
         {/* Header */}
         <div className="p-4 border-b flex items-center justify-between bg-background">
-            <div className="flex items-center gap-3">
+            <Link href={`/profil/${partner.id}`} className="flex items-center gap-3 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors">
                 <Avatar className="h-10 w-10">
                     <AvatarImage src={partner.image || undefined} />
                     <AvatarFallback>{partner.name ? partner.name.substring(0,2).toUpperCase() : "U"}</AvatarFallback>
                 </Avatar>
-                <h3 className="font-semibold text-lg">{partner.name}</h3>
-            </div>
+                <h3 className="font-semibold text-lg hover:underline text-foreground">{partner.name}</h3>
+            </Link>
             <div className="flex gap-2"> {/* Use flex gap for buttons */}
                 <BlockButton userId={partner.id} initialIsBlocked={initialIsBlocked} />
                 <ReportButton reportedUserId={partner.id} isLoggedIn={isLoggedIn} variant="outline" className="text-muted-foreground hover:bg-yellow-50 hover:text-yellow-600 border-yellow-200" />

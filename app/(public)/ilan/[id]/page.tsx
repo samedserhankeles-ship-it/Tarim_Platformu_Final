@@ -324,20 +324,20 @@ export default async function ListingDetailPage(props: { params: Promise<{ id: s
             {/* Seller Info */}
             <Card>
                 <CardContent className="p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                        <Avatar className="h-14 w-14 border-2 border-background shadow-sm">
+                    <Link href={`/profil/${listing.userId}`} className="flex items-center gap-4 mb-4 hover:bg-muted/50 p-2 -m-2 rounded-lg transition-colors group">
+                        <Avatar className="h-14 w-14 border-2 border-background shadow-sm group-hover:border-primary/20 transition-colors">
                             <AvatarImage src={listing.user.image || undefined} />
                             <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
                                 {listing.user.name ? listing.user.name.substring(0,2).toUpperCase() : "U"}
                             </AvatarFallback>
                         </Avatar>
                         <div>
-                            <p className="font-semibold text-lg">{listing.user.name || "Kullanıcı"}</p>
+                            <p className="font-semibold text-lg group-hover:underline text-foreground">{listing.user.name || "Kullanıcı"}</p>
                             <p className="text-sm text-muted-foreground capitalize">
                                 {listing.user.role?.toLowerCase() || "Üye"}
                             </p>
                         </div>
-                    </div>
+                    </Link>
                     <Separator className="mb-4" />
                     <div className="flex flex-col gap-3">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
