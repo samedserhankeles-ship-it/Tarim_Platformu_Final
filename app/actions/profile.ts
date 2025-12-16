@@ -143,6 +143,7 @@ export async function updateUserProfileAction(formData: FormData) {
 
     revalidatePath("/dashboard/settings"); // Ayarlar sayfasını güncelle
     revalidatePath("/dashboard/profil"); // Profil sayfasını güncelle
+    revalidatePath("/dashboard/magaza"); // Mağaza ayarları sayfasını güncelle (yeni eklendi)
     revalidatePath(`/profil/${currentUser.id}`); // Herkese açık profil sayfasını güncelle
 
     return { success: true, message: "Profiliniz başarıyla güncellendi." };

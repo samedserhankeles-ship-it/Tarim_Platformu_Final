@@ -10,6 +10,7 @@ import { Loader2, Save } from "lucide-react";
 import { updateUserProfileAction } from "@/app/actions/profile";
 import { toast } from "sonner";
 import StoreProfileCard from "@/components/StoreProfileCard";
+import { ImageUploadField } from "@/components/ImageUploadField";
 
 interface UserData {
     id: string;
@@ -25,7 +26,8 @@ interface UserData {
     website: string | null;
     addressDetail: string | null;
     image: string | null;
-    createdAt: string; // ISO string olarak geliyor
+    coverImage: string | null;
+    createdAt: string; 
 }
 
 export default function StoreSettingsForm({ user }: { user: UserData }) {
@@ -38,7 +40,9 @@ export default function StoreSettingsForm({ user }: { user: UserData }) {
     const [phone, setPhone] = useState(user.phone || "");
     const [city, setCity] = useState(user.city || "");
     const [district, setDistrict] = useState(user.district || "");
-    // Resim URL'i için de state tutabiliriz ama şimdilik sadece text alanları.
+    
+    // ImageUploadField'dan gelen dosya bilgilerini tutmak için
+    const [selectedCoverFile, setSelectedCoverFile] = useState<File | null>(null);
 
     // Canlı önizleme için güncellenmiş user objesi
     const previewUser: UserData = {
@@ -49,11 +53,12 @@ export default function StoreSettingsForm({ user }: { user: UserData }) {
         phone: phone,
         city: city,
         district: district,
-        createdAt: user.createdAt, // StoreProfileCard Date object beklediği için aşağıda tekrar new Date yapacağız
+        coverImage: selectedCoverFile ? URL.createObjectURL(selectedCoverFile) : user.coverImage,
+        createdAt: user.createdAt,
     };
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-        e.preventDefault(); // Varsayılan form gönderimini engelle
+        e.preventDefault();
 
         const formData = new FormData();
         formData.append("website", website);
@@ -64,7 +69,6 @@ export default function StoreSettingsForm({ user }: { user: UserData }) {
         formData.append("district", district);
 
         // updateUserProfileAction'ın beklediği diğer alanları FormData'ya ekle
-        // Bu alanlar formda olmadığı için user prop'undan alıyoruz
         formData.append("name", user.name || "");
         formData.append("firstName", user.name?.split(' ')[0] || "");
         formData.append("lastName", user.name?.split(' ').slice(1).join(' ') || "");
@@ -72,7 +76,11 @@ export default function StoreSettingsForm({ user }: { user: UserData }) {
         formData.append("role", user.role || "");
         formData.append("crops", user.crops || "");
         formData.append("certificates", user.certificates || "");
-        // ImageFile boş kalacak veya kullanıcı input eklerse oradan gelecek.
+        
+        // coverImage dosyasını ekle
+        if (selectedCoverFile) {
+            formData.append("coverImage", selectedCoverFile);
+        }
 
         startTransition(async () => {
             const result = await updateUserProfileAction(formData);
@@ -85,7 +93,21 @@ export default function StoreSettingsForm({ user }: { user: UserData }) {
     }
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6">
+            {/* Canlı Önizleme */}
+            <div className="lg:sticky lg:top-8 self-start">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Canlı Önizleme</CardTitle>
+                        <CardDescription>Mağazanızın nasıl göründüğünü anlık olarak görün.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <StoreProfileCard user={{ ...previewUser, createdAt: new Date(previewUser.createdAt) }} showActions={false} />
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Ayar Formu */}
             <form onSubmit={handleSubmit} className="space-y-6">
                 <Card>
                     <CardHeader>
@@ -149,6 +171,19 @@ export default function StoreSettingsForm({ user }: { user: UserData }) {
                                 <Input id="district" name="district" value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="Örn: Karatay" />
                             </div>
                         </div>
+
+                        {/* Banner Yükleme Alanı */}
+                        <div className="space-y-2 mt-4">
+                            <ImageUploadField 
+                                id="storeBanner"
+                                name="coverImage"
+                                label="Mağaza Banner Resmi"
+                                defaultValue={previewUser.coverImage}
+                                variant="banner"
+                                currentValue={previewUser.coverImage}
+                                onFileChange={setSelectedCoverFile}
+                            />
+                        </div>
                     </CardContent>
                     <CardFooter className="flex justify-end border-t px-6 py-4">
                         <Button size="lg" type="submit" disabled={isPending}> 
@@ -167,18 +202,6 @@ export default function StoreSettingsForm({ user }: { user: UserData }) {
                     </CardFooter>
                 </Card>
             </form>
-
-            <div className="lg:sticky lg:top-8 self-start">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Canlı Önizleme</CardTitle>
-                        <CardDescription>Mağazanızın nasıl göründüğünü anlık olarak görün.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <StoreProfileCard user={{ ...previewUser, createdAt: new Date(previewUser.createdAt) }} showActions={false} />
-                    </CardContent>
-                </Card>
-            </div>
         </div>
     );
 }

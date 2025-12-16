@@ -106,10 +106,25 @@ export default async function ProfilePage(props: { params: Promise<{ id: string 
 
   return (
     <div className="min-h-screen bg-muted/20 pb-8">
-      <div className="container mx-auto px-4 max-w-6xl">
+      <div className="mx-auto">
         
         <StoreProfileCard 
-            user={{ ...plainUser, createdAt: new Date(plainUser.createdAt) }} // Date'i tekrar Date objesine çevir
+            user={{ 
+                ...plainUser, 
+                createdAt: new Date(plainUser.createdAt),
+                // coverImage, website, addressDetail gibi yeni alanları da include et
+                coverImage: user.coverImage,
+                website: user.website,
+                addressDetail: user.addressDetail,
+                phone: user.phone,
+                bio: user.bio,
+                city: user.city,
+                district: user.district,
+                email: user.email,
+                id: user.id,
+                name: user.name,
+                role: user.role,
+            }}
             currentUser={plainCurrentUser}
             initialIsBlocked={initialIsBlocked}
             showActions={true}
