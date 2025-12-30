@@ -7,10 +7,12 @@ import { format, addDays, isAfter } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button"; 
-import { Search, MoreHorizontal, Ban, Unlock, UserMinus, UserPlus, Trash2, CalendarIcon, Loader2, Megaphone } from "lucide-react";
+import { Search, MoreHorizontal, Ban, Unlock, UserMinus, UserPlus, Trash2, CalendarIcon, Loader2, Megaphone, ExternalLink } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
 import { fetchUsersAction } from "@/app/actions/user"; 
-import { banUserAction, unbanUserAction, restrictUserAction, unrestrictUserAction, sendPrivateAnnouncementAction } from "@/app/actions/admin"; 
+import { banUserAction, unbanUserAction, restrictUserAction, unrestrictUserAction, sendPrivateAnnouncementAction, createUserAction, deleteUserAction, updateUserRoleAction } from "@/app/actions/admin"; 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -72,14 +74,20 @@ export default function AdminUsersPage() {
   const [openRestrictDialog, setOpenRestrictDialog] = useState(false);
   const [openUnrestrictDialog, setOpenUnrestrictDialog] = useState(false);
   const [openAnnouncementDialog, setOpenAnnouncementDialog] = useState(false);
+  const [openCreateUserDialog, setOpenCreateUserDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openRoleDialog, setOpenRoleDialog] = useState(false);
 
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [banReason, setBanReason] = useState("");
   const [banDuration, setBanDuration] = useState<Date | undefined>(undefined);
   const [restrictionReason, setRestrictionReason] = useState("");
+  const [newRole, setNewRole] = useState("");
   
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
+
+  const SUPER_ADMIN_EMAIL = "admin@tarim.com";
 
   useEffect(() => {
     startTransition(async () => {
@@ -171,6 +179,36 @@ export default function AdminUsersPage() {
     }
   };
 
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    const result = await deleteUserAction(selectedUser.id);
+    if (result.success) {
+      toast({ title: "Başarılı", description: result.message });
+      setOpenDeleteDialog(false);
+      startTransition(async () => { 
+        const fetchedUsers = await fetchUsersAction(searchQuery);
+        setUsers(fetchedUsers);
+      });
+    } else {
+      toast({ title: "Hata", description: result.message, variant: "destructive" });
+    }
+  };
+
+  const handleUpdateRole = async () => {
+    if (!selectedUser || !newRole) return;
+    const result = await updateUserRoleAction(selectedUser.id, newRole);
+    if (result.success) {
+        toast({ title: "Başarılı", description: result.message });
+        setOpenRoleDialog(false);
+        startTransition(async () => {
+            const fetchedUsers = await fetchUsersAction(searchQuery);
+            setUsers(fetchedUsers);
+        });
+    } else {
+        toast({ title: "Hata", description: result.message, variant: "destructive" });
+    }
+  };
+
   const handleSendAnnouncement = async () => {
     if (!selectedUser || !announcementTitle.trim() || !announcementMessage.trim()) return;
     
@@ -190,15 +228,20 @@ export default function AdminUsersPage() {
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-2xl font-bold tracking-tight mb-6">Kullanıcı Yönetimi</h1>
       
-      <div className="mb-6 relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input 
-          type="text"
-          placeholder="Kullanıcı adı veya e-posta ile ara..."
-          className="pl-9"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+      <div className="flex justify-between items-center mb-6 gap-4">
+        <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+            type="text"
+            placeholder="Kullanıcı adı veya e-posta ile ara..."
+            className="pl-9"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            />
+        </div>
+        <Button onClick={() => setOpenCreateUserDialog(true)}>
+            <UserPlus className="mr-2 h-4 w-4" /> Kullanıcı Ekle
+        </Button>
       </div>
 
       <Card>
@@ -232,72 +275,132 @@ export default function AdminUsersPage() {
                             </TableCell>
                         </TableRow>
                     ) : (
-                        users.map((user) => (
-                        <TableRow key={user.id}>
-                            <TableCell className="font-medium">{user.name || "N/A"}</TableCell>
-                            <TableCell>{user.email}</TableCell>
-                            <TableCell className="capitalize">{user.role === "FARMER" ? "Çiftçi" : user.role}</TableCell>
-                            <TableCell>{user.phone || "N/A"}</TableCell>
-                            <TableCell>{[user.city, user.district].filter(Boolean).join(", ") || "N/A"}</TableCell>
-                            <TableCell>{format(user.createdAt, "dd MMM yyyy", { locale: tr })}</TableCell>
-                            <TableCell>
-                                {user.isBanned && isAfter(new Date(user.bannedUntil!), new Date()) && (
-                                    <Badge variant="destructive" className="mr-1">Yasaklı</Badge>
-                                )}
-                                {user.isRestricted && <Badge variant="secondary">Kısıtlı</Badge>}
-                                {!user.isBanned && !user.isRestricted && <Badge variant="outline">Aktif</Badge>}
-                            </TableCell>
-                            <TableCell>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Aç</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenAnnouncementDialog(true); }}>
-                                            <Megaphone className="mr-2 h-4 w-4" /> Özel Duyuru Gönder
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        {/* Ban/Unban */}
-                                        {!user.isBanned || !isAfter(new Date(user.bannedUntil!), new Date()) ? (
-                                            <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenBanDialog(true); }}>
-                                                <Ban className="mr-2 h-4 w-4" /> Banla
-                                            </DropdownMenuItem>
-                                        ) : (
-                                            <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenUnbanDialog(true); }}>
-                                                <Unlock className="mr-2 h-4 w-4" /> Banı Kaldır
-                                            </DropdownMenuItem>
+                        users.map((user) => {
+                            const isSuperAdmin = user.email === SUPER_ADMIN_EMAIL;
+                            return (
+                                <TableRow key={user.id}>
+                                    <TableCell className="font-medium">
+                                        <Link href={`/profil/${user.id}`} target="_blank" className="hover:underline flex items-center gap-1 group">
+                                            {user.name || "N/A"}
+                                            <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </Link>
+                                        {isSuperAdmin && <Badge variant="default" className="ml-2 bg-amber-500 hover:bg-amber-600">Ana Yönetici</Badge>}
+                                    </TableCell>
+                                    <TableCell>{user.email}</TableCell>
+                                    <TableCell className="capitalize">{user.role === "FARMER" ? "Çiftçi" : user.role}</TableCell>
+                                    <TableCell>{user.phone || "N/A"}</TableCell>
+                                    <TableCell>{[user.city, user.district].filter(Boolean).join(", ") || "N/A"}</TableCell>
+                                    <TableCell>{format(user.createdAt, "dd MMM yyyy", { locale: tr })}</TableCell>
+                                    <TableCell>
+                                        {user.isBanned && isAfter(new Date(user.bannedUntil!), new Date()) && (
+                                            <Badge variant="destructive" className="mr-1">Yasaklı</Badge>
                                         )}
-                                        <DropdownMenuSeparator />
-                                        {/* Restrict/Unrestrict */}
-                                        {!user.isRestricted ? (
-                                            <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenRestrictDialog(true); }}>
-                                                <UserMinus className="mr-2 h-4 w-4" /> Kısıtla
-                                            </DropdownMenuItem>
-                                        ) : (
-                                            <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenUnrestrictDialog(true); }}>
-                                                <UserPlus className="mr-2 h-4 w-4" /> Kısıtlamayı Kaldır
-                                            </DropdownMenuItem>
-                                        )}
-                                        <DropdownMenuSeparator />
-                                        {user.role !== "ADMIN" && ( 
-                                            <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => {  }}>
-                                                <Trash2 className="mr-2 h-4 w-4" /> Hesabı Sil
-                                            </DropdownMenuItem>
-                                        )}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                        ))
+                                        {user.isRestricted && <Badge variant="secondary">Kısıtlı</Badge>}
+                                        {!user.isBanned && !user.isRestricted && <Badge variant="outline">Aktif</Badge>}
+                                    </TableCell>
+                                    <TableCell>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                    <span className="sr-only">Aç</span>
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem asChild>
+                                                    <Link href={`/profil/${user.id}`} target="_blank" className="flex items-center">
+                                                        <UserPlus className="mr-2 h-4 w-4" /> Profili Görüntüle
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenAnnouncementDialog(true); }}>
+                                                    <Megaphone className="mr-2 h-4 w-4" /> Özel Duyuru Gönder
+                                                </DropdownMenuItem>
+                                                
+                                                {!isSuperAdmin && (
+                                                    <DropdownMenuItem onClick={() => { setSelectedUser(user); setNewRole(user.role); setOpenRoleDialog(true); }}>
+                                                        <UserPlus className="mr-2 h-4 w-4" /> Rol Değiştir
+                                                    </DropdownMenuItem>
+                                                )}
+
+                                                <DropdownMenuSeparator />
+                                                
+                                                {!isSuperAdmin && (
+                                                    <>
+                                                        {!user.isBanned || !isAfter(new Date(user.bannedUntil!), new Date()) ? (
+                                                            <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenBanDialog(true); }}>
+                                                                <Ban className="mr-2 h-4 w-4" /> Banla
+                                                            </DropdownMenuItem>
+                                                        ) : (
+                                                            <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenUnbanDialog(true); }}>
+                                                                <Unlock className="mr-2 h-4 w-4" /> Banı Kaldır
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        <DropdownMenuSeparator />
+                                                        {!user.isRestricted ? (
+                                                            <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenRestrictDialog(true); }}>
+                                                                <UserMinus className="mr-2 h-4 w-4" /> Kısıtla
+                                                            </DropdownMenuItem>
+                                                        ) : (
+                                                            <DropdownMenuItem onClick={() => { setSelectedUser(user); setOpenUnrestrictDialog(true); }}>
+                                                                <UserPlus className="mr-2 h-4 w-4" /> Kısıtlamayı Kaldır
+                                                            </DropdownMenuItem>
+                                                        )}
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => { setSelectedUser(user); setOpenDeleteDialog(true); }}>
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Hesabı Sil
+                                                        </DropdownMenuItem>
+                                                    </>
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })
                     )}</TableBody>
                 </Table>
             </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Role Update Dialog */}
+      <Dialog open={openRoleDialog} onOpenChange={setOpenRoleDialog}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Kullanıcı Rolünü Değiştir: {selectedUser?.name}</DialogTitle>
+                <DialogDescription>
+                    Bu kullanıcının yetkisini değiştirmek üzeresiniz.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="new-role">Yeni Rol</Label>
+                    <Select value={newRole} onValueChange={setNewRole}>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Rol Seçiniz" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="FARMER">Çiftçi</SelectItem>
+                            <SelectItem value="BUSINESS">İşletme</SelectItem>
+                            <SelectItem value="OPERATOR">Operatör</SelectItem>
+                            <SelectItem value="ADMIN">Yönetici</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground mt-2">
+                        Dikkat: "Yönetici" yetkisi vermek, kullanıcının sisteme tam erişim sağlamasına neden olabilir.
+                    </p>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setOpenRoleDialog(false)}>İptal</Button>
+                <Button onClick={handleUpdateRole} disabled={isPending}>
+                    {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Güncelle"}
+                </Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Announcement Dialog */}
       <Dialog open={openAnnouncementDialog} onOpenChange={setOpenAnnouncementDialog}>
@@ -447,6 +550,86 @@ export default function AdminUsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Delete User Dialog */}
+      <AlertDialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Kullanıcıyı Sil: {selectedUser?.name}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu kullanıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz. 
+              Kullanıcıya ait tüm ilanlar, mesajlar ve veriler kalıcı olarak silinecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction 
+                className="bg-red-600 hover:bg-red-700"
+                onClick={handleDeleteUser}
+            >
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Kullanıcıyı Sil"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={openCreateUserDialog} onOpenChange={setOpenCreateUserDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Yeni Kullanıcı Oluştur</DialogTitle>
+            <DialogDescription>
+              Sisteme manuel olarak yeni bir kullanıcı ekleyin.
+            </DialogDescription>
+          </DialogHeader>
+          <form action={async (formData) => {
+              const result = await createUserAction(formData);
+              if (result.success) {
+                  toast({ title: "Başarılı", description: result.message });
+                  setOpenCreateUserDialog(false);
+                  startTransition(async () => {
+                      const fetchedUsers = await fetchUsersAction(searchQuery);
+                      setUsers(fetchedUsers);
+                  });
+              } else {
+                  toast({ title: "Hata", description: result.message, variant: "destructive" });
+              }
+          }}>
+            <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                    <Label htmlFor="name">Ad Soyad</Label>
+                    <Input id="name" name="name" placeholder="Örn: Ahmet Yılmaz" required />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="email">E-posta</Label>
+                    <Input id="email" name="email" type="email" placeholder="ornek@tarim.com" required />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="password">Şifre</Label>
+                    <Input id="password" name="password" type="password" required />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="role">Rol</Label>
+                    <Select name="role" defaultValue="FARMER">
+                        <SelectTrigger>
+                            <SelectValue placeholder="Rol Seçiniz" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="FARMER">Çiftçi</SelectItem>
+                            <SelectItem value="BUSINESS">İşletme</SelectItem>
+                            <SelectItem value="OPERATOR">Operatör</SelectItem>
+                            <SelectItem value="ADMIN">Yönetici</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            </div>
+            <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setOpenCreateUserDialog(false)}>İptal</Button>
+                <Button type="submit">Oluştur</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

@@ -58,11 +58,11 @@ export function ImageUploadField({
   const avatarFallback = fallbackText ? fallbackText.substring(0, 2).toUpperCase() : "U";
 
   return (
-    <div className="space-y-2">
-      <Label htmlFor={id} className="sr-only">{label}</Label> {/* Label'ı ekledim */}
+    <div className="space-y-2 group/field w-full h-full"> {/* h-full eklendi */}
+      <Label htmlFor={id} className="sr-only">{label}</Label>
       <div 
         className={`relative cursor-pointer group flex items-center justify-center overflow-hidden 
-          ${variant === "avatar" ? "h-32 w-32 rounded-full border-4 border-background bg-primary/20 mx-auto" : "h-32 w-full rounded-md bg-gray-200"}`
+          ${variant === "avatar" ? "h-full w-full rounded-full border-4 border-background bg-primary/20" : "h-full w-full bg-muted"}` // h-32 yerine h-full
         }
         onClick={handleClick}
       >
@@ -75,11 +75,14 @@ export function ImageUploadField({
               <AvatarFallback className="text-4xl bg-primary/10 text-primary">{avatarFallback}</AvatarFallback>
             </Avatar>
           ) : (
-            <ImageIcon className="h-12 w-12 text-muted-foreground opacity-30" />
+            <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                <ImageIcon className="h-12 w-12 opacity-30" />
+                <span className="text-sm font-medium opacity-50">Kapak Fotoğrafı Ekle</span>
+            </div>
           )
         )}
         
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-inherit">
+        <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-inherit z-20">
           <Camera className="text-white h-8 w-8" />
         </div>
         
@@ -93,10 +96,7 @@ export function ImageUploadField({
           onChange={handleFileChange}
         />
       </div>
-      {/* Input'u açmak için ayrı bir button */}
-      <Button variant="outline" className="w-full" type="button" onClick={handleClick}>
-        {label} Değiştir
-      </Button>
+      {/* Butonu kaldırdım çünkü görsele tıklamak yeterli ve daha şık */}
     </div>
   );
 }

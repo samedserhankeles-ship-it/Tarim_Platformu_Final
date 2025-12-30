@@ -95,7 +95,6 @@ async function main() {
           workType: "Tam Zamanlı",
           city: location.city,
           district: randomDistrict,
-          location: `${location.city}, ${randomDistrict}`,
           userId: user.id,
           active: true,
           images: jobTemplate.image, // Gerçekçi resim

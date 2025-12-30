@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ImagePlus, Upload, X, RefreshCw, Loader2 } from "lucide-react"
+import { ImagePlus, Upload, X, RefreshCw, Loader2, Trash2 } from "lucide-react"
 import { createListingAction } from "@/app/actions/listing"
 import { turkeyLocations } from "@/lib/locations"
 
@@ -29,23 +29,40 @@ export default function CreateListingPage() {
   const [isPending, startTransition] = useTransition()
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [selectedCity, setSelectedCity] = useState("")
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const currentDistricts = turkeyLocations.find(c => c.city === selectedCity)?.districts || []
 
-  // Select değerlerini formda taşımak için state veya name kullanımı biraz tricky.
-  // En kolayı HTML input type="hidden" kullanmak ve select değiştikçe onu güncellemektir.
-  // Ancak Shadcn Select bileşeni "name" prop'unu destekler, bu sayede FormData'ya otomatik dahil olur.
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files)
+      // Mevcut dosyalara ekle
+      setSelectedFiles(prev => [...prev, ...newFiles])
+    }
+  }
+
+  const removeFile = (indexToRemove: number) => {
+    setSelectedFiles(prev => prev.filter((_, index) => index !== indexToRemove))
+  }
 
   async function handleSubmit(formData: FormData) {
     setErrorMessage(null)
-    // listingType'ı manuel ekle (state olduğu için)
+    // listingType'ı manuel ekle
     formData.append("type", listingType)
+    
+    // Varsayılan input file'dan gelenleri temizle (çünkü biz kontrol ediyoruz)
+    formData.delete("images")
+    
+    // Seçilen dosyaları ekle
+    selectedFiles.forEach(file => {
+        formData.append("images", file)
+    })
 
     startTransition(async () => {
       try {
         await createListingAction(formData);
-        // Eğer buraya gelirse, redirect çalışmadı veya başka bir sorun var
-        // Normalde createListingAction başarılı olursa redirect yapar ve bu satırlara gelmez.
       } catch (error: any) {
         setErrorMessage(error.message || "İlan oluşturulurken bir hata oluştu.");
       }
@@ -75,8 +92,6 @@ export default function CreateListingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>İlan Türü</Label>
-                {/* listingType state ile yönetiliyor, form'a hidden input ile gönderiyoruz veya createListingAction'da logic kuruyoruz. */}
-                {/* Shadcn Select onValueChange ile state güncelliyor. */}
                 <Select onValueChange={setListingType} defaultValue="product">
                   <SelectTrigger>
                     <SelectValue placeholder="Tür seçiniz" />
@@ -172,7 +187,7 @@ export default function CreateListingPage() {
             </div>
 
             {/* Konum */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>İl</Label>
                 <Select name="city" onValueChange={setSelectedCity}>
@@ -203,6 +218,15 @@ export default function CreateListingPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="village">Köy / Mahalle</Label>
+                <Input 
+                  id="village" 
+                  name="village" 
+                  placeholder="Köy veya mahalle adı giriniz" 
+                  disabled={!selectedCity} 
+                />
+              </div>
             </div>
 
             {/* İletişim Bilgileri (Opsiyonel) */}
@@ -216,17 +240,58 @@ export default function CreateListingPage() {
               />
             </div>
 
-            {/* Fotoğraf Yükleme */}
-            <div className="space-y-2">
+            {/* Fotoğraf Yükleme - Gelişmiş */}
+            <div className="space-y-4">
               <Label htmlFor="images">Fotoğraflar</Label>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-4">
-                    <Input id="images" name="images" type="file" multiple accept="image/*" className="cursor-pointer" />
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {selectedFiles.map((file, index) => (
+                  <div key={index} className="relative aspect-square group">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img 
+                      src={URL.createObjectURL(file)} 
+                      alt={`Preview ${index}`} 
+                      className="w-full h-full object-cover rounded-lg border"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeFile(index)}
+                      className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    {index === 0 && (
+                      <div className="absolute bottom-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                        Kapak
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                {/* Ekleme Butonu */}
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                >
+                  <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Resim Ekle</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Birden fazla fotoğraf seçebilirsiniz. İlk fotoğraf kapak fotoğrafı olacaktır.
-                </p>
               </div>
+
+              <input 
+                ref={fileInputRef}
+                id="images" 
+                name="images" 
+                type="file" 
+                multiple 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleFileSelect}
+              />
+              
+              <p className="text-xs text-muted-foreground">
+                Maksimum 10 fotoğraf yükleyebilirsiniz. İlk fotoğraf kapak fotoğrafı olacaktır.
+              </p>
             </div>
 
             {/* Hata Mesajı */}

@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, MessageSquare, Settings, LogOut, BarChart3, ShoppingBag, Users, Flag, FileStack, Megaphone, Mail, Sprout, Home, Store } from "lucide-react"; // Store ikonu eklendi
+import { LayoutDashboard, FileText, MessageSquare, Settings, LogOut, BarChart3, ShoppingBag, Users, Flag, FileStack, Megaphone, Mail, Sprout, Home, Store, User as UserIcon, MessageSquareText, Share2 } from "lucide-react"; // MessageSquareText eklendi
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -17,6 +17,7 @@ const sidebarItems = [
   { icon: ShoppingBag, label: "Market", href: "/explore" },
   { icon: FileText, label: "İlanlarım", href: "/dashboard/ilanlarim" },
   { icon: MessageSquare, label: "Mesajlar", href: "/dashboard/mesajlar" },
+  { icon: MessageSquareText, label: "Forum", href: "/community" }, // Forum eklendi
   { icon: BarChart3, label: "Raporlar", href: "/dashboard/raporlar" },
   { icon: Settings, label: "Ayarlar", href: "/dashboard/ayarlar" },
 ];
@@ -96,6 +97,23 @@ function SidebarContent({ user, pathname, isMobile }: { user: UserType; pathname
         href: "/dashboard/magaza", // Yeni oluşturulan mağaza ayarları sayfasına yönlendir
       });
     }
+  } else if (user && user.role !== "ADMIN") {
+      // Çiftçi ve Operatörler için "Profilim" linki ekle (Admin zaten her şeyi görüyor)
+      // "Profil Ayarları" zaten var, bu "Herkese Açık Profil" linki olacak.
+      const ilanlarimIndex = dynamicSidebarItems.findIndex(item => item.label === "İlanlarım");
+      if (ilanlarimIndex !== -1) {
+          // İlanlarım'dan sonra Sosyal ve Profilim ekle
+          dynamicSidebarItems.splice(ilanlarimIndex + 1, 0, {
+            icon: Share2,
+            label: "Sosyal",
+            href: "/social",
+          });
+          dynamicSidebarItems.splice(ilanlarimIndex + 2, 0, {
+            icon: UserIcon,
+            label: "Profilim",
+            href: `/profil/${user.id}`,
+          });
+      }
   }
 
   return (

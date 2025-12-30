@@ -205,12 +205,17 @@ export function MasterHeader({ user }: { user: UserType }) {
                             <DropdownMenuLabel>Hesabım</DropdownMenuLabel>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem asChild>
+                                <Link href={`/profil/${displayUser.id}`} className="cursor-pointer">
+                                    <User className="mr-2 h-4 w-4" /> Profilim
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
                                 <Link href="/dashboard" className="cursor-pointer">
                                     <LayoutDashboard className="mr-2 h-4 w-4" /> Panel
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Link href="/dashboard/settings" className="cursor-pointer">
+                                <Link href="/dashboard/profil" className="cursor-pointer">
                                     <Settings className="mr-2 h-4 w-4" /> Profil Ayarları
                                 </Link>
                             </DropdownMenuItem>

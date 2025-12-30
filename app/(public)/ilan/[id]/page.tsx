@@ -3,15 +3,16 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // AvatarImage de eklendi
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MapPin, Calendar, User, MessageSquare, ArrowLeft, Share2, AlertTriangle, RefreshCw } from "lucide-react";
 import { notFound } from "next/navigation";
-import MessageButton from "./message-button"; // Doğru import edildi
+import MessageButton from "./message-button";
 import CallButton from "./call-button";
 import { getCurrentUser } from "@/lib/auth";
 import FavoriteButton from "@/components/favorite-button";
 import { prisma } from "@/lib/prisma";
-import ReportButton from "@/components/report-button"; // Import ReportButton
+import ReportButton from "@/components/report-button";
+import ImageGallery from "@/components/image-gallery";
 import type { Metadata } from "next";
 
 export async function generateMetadata(
@@ -111,14 +112,30 @@ export default async function ListingDetailPage(props: { params: Promise<{ id: s
   const isBarter = listing.type === "product" && listing.description.includes("[TAKAS:");
   // @ts-ignore - Prisma tipleri dynamic return ile bazen karışabilir, basitleştiriyoruz
   const price = listing.type === "product" ? listing.price : listing.wage;
+  
   // @ts-ignore
-  const location = listing.type === "product" ? (listing.city ? `${listing.city}, ${listing.district}` : "Konum Bilgisi Alınamadı") : 
-                   (listing.city ? `${listing.city}, ${listing.district}` : (listing.location || "Konum Bilgisi Alınamadı"));
+  const location = listing.city 
+    ? `${listing.city}, ${listing.district}${listing.village ? `, ${listing.village}` : ''}`
+    : ((listing as any).location || "Konum Bilgisi Alınamadı");
+  
+  // Resim Listesi Hazırlama
   // @ts-ignore
-  const image = listing.type === "product" && listing.images ? listing.images.split(",")[0] : 
-                (listing.type === "job" && listing.images ? listing.images.split(",")[0] :
-                (listing.type === "job" ? "https://placehold.co/800x600/blue/white?text=Is+Ilani" : 
-                "https://placehold.co/800x600/green/white?text=Urun"));
+  const imagesString = listing.images || "";
+  const imagesArray = imagesString.split(",").filter((url: string) => url.trim() !== "");
+  
+  if (imagesArray.length === 0) {
+      // Fallback images
+      if (listing.type === "product" && (listing as any).image) {
+          imagesArray.push((listing as any).image);
+      } else {
+          imagesArray.push(
+            listing.type === "job" 
+              ? "https://placehold.co/800x600/blue/white?text=Is+Ilani" 
+              : "https://placehold.co/800x600/green/white?text=Urun"
+          );
+      }
+  }
+
   // @ts-ignore
   const contactPhoneNumber = listing.contactPhone || listing.user.phone;
 
@@ -196,7 +213,7 @@ export default async function ListingDetailPage(props: { params: Promise<{ id: s
           : ((listing as any).district || ""),
       }
     },
-    "image": image,
+    "image": imagesArray[0],
   };
 
   return (
@@ -221,26 +238,13 @@ export default async function ListingDetailPage(props: { params: Promise<{ id: s
           {/* Main Content (Left Column) */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* Image Gallery (Single Image for now) */}
-            <div className="rounded-2xl overflow-hidden bg-background border shadow-sm aspect-video relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img 
-                src={image} 
-                alt={listing.title} 
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute top-4 left-4">
-                 {isBarter ? (
-                    <Badge className="bg-purple-600 text-white border-purple-600 px-3 py-1 text-sm">
-                        <RefreshCw className="mr-1 h-3 w-3" /> Takas Teklifi
-                    </Badge>
-                 ) : (
-                    <Badge className="bg-background/90 text-foreground backdrop-blur px-3 py-1 text-sm">
-                        {listing.type === "job" ? "İş İlanı" : "Satılık"}
-                    </Badge>
-                 )}
-              </div>
-            </div>
+            {/* Image Gallery Component */}
+            <ImageGallery 
+                images={imagesArray} 
+                title={listing.title} 
+                isBarter={isBarter} 
+                type={listing.type} 
+            />
 
             {/* Title & Description */}
             <div className="bg-card rounded-2xl p-6 md:p-8 border shadow-sm">
@@ -288,6 +292,32 @@ export default async function ListingDetailPage(props: { params: Promise<{ id: s
                             }
                             return displayDescription;
                         })()}
+                    </p>
+                </div>
+
+                <Separator className="my-6" />
+                
+                {/* Map Section */}
+                <div className="pt-2">
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <MapPin className="h-5 w-5" /> Konum
+                    </h3>
+                    <div className="rounded-xl overflow-hidden border h-[300px] w-full bg-muted relative">
+                        <iframe 
+                            width="100%" 
+                            height="100%" 
+                            frameBorder="0" 
+                            scrolling="no" 
+                            marginHeight={0} 
+                            marginWidth={0} 
+                            src={`https://maps.google.com/maps?q=${encodeURIComponent(location)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+                            title="İlan Konumu"
+                            className="w-full h-full"
+                        ></iframe>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-3 flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {location} konumunda gösteriliyor.
                     </p>
                 </div>
               </div>

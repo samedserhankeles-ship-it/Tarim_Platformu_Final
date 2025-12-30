@@ -178,7 +178,10 @@ export default function AdminReportsPage() {
                                             <Eye className="mr-2 h-4 w-4" /> Şikayeti Görüntüle
                                         </DropdownMenuItem>
                                         {reportedListing && ( // İlana git aksiyonu
-                                            <DropdownMenuItem onClick={handleGoToListingDetails}>
+                                            <DropdownMenuItem onClick={() => {
+                                                const url = `/ilan/${listingType}-${listingId}`;
+                                                window.open(url, '_blank');
+                                            }}>
                                                 <ExternalLink className="mr-2 h-4 w-4" /> İlan Detayına Git
                                             </DropdownMenuItem>
                                         )}
@@ -270,9 +273,17 @@ export default function AdminReportsPage() {
                )}
 
                {/* Meta Bilgiler */}
-               <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                   <span>ID: {selectedReport.id}</span>
-                   <span>{format(selectedReport.createdAt, "d MMMM yyyy HH:mm", { locale: tr })}</span>
+               <div className="space-y-1 text-xs text-muted-foreground pt-2 border-t">
+                   <div className="flex justify-between">
+                       <span>Şikayet ID: {selectedReport.id}</span>
+                       <span>Tarih: {format(selectedReport.createdAt, "d MMMM yyyy HH:mm", { locale: tr })}</span>
+                   </div>
+                   {(selectedReport.productId || selectedReport.jobPostingId) && (
+                       <div className="flex justify-between">
+                           <span>İlan ID: {selectedReport.productId || selectedReport.jobPostingId}</span>
+                           <span>Tip: {selectedReport.product ? "Ürün" : "İş İlanı"}</span>
+                       </div>
+                   )}
                </div>
             </div>
           )}

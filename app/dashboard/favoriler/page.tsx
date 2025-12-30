@@ -54,7 +54,7 @@ export default async function FavoritesPage() {
             id: `job-${j.id}`,
             title: j.title,
             price: `${j.wage} ₺ / Ay`, 
-            location: j.city ? `${j.city}, ${j.district}` : (j.location || "Konum Bilgisi"),
+            location: j.city ? `${j.city}, ${j.district}` : "Konum Bilgisi",
             type: "İş İlanı",
             image: j.images ? j.images.split(",")[0] : "https://placehold.co/400x300/blue/white?text=Is+Ilani",
             category: "İş Gücü",

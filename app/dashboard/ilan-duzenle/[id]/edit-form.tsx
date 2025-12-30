@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef } from "react"
 import { updateListingAction } from "@/app/actions/listing"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,6 +9,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,28 +27,49 @@ import { turkeyLocations } from "@/lib/locations"
 
 export default function EditListingForm({ listing }: { listing: any }) {
   const [isPending, startTransition] = useTransition()
-  const [images, setImages] = useState<string[]>(listing.images ? listing.images.split(",") : [])
+  // Mevcut resimler (URL stringleri)
+  const [existingImages, setExistingImages] = useState<string[]>(listing.images ? listing.images.split(",").filter((url: string) => url.trim() !== "") : [])
+  // Yeni seçilen resim dosyaları
+  const [newFiles, setNewFiles] = useState<File[]>([])
   const [selectedCity, setSelectedCity] = useState(listing.city || "")
+  
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const currentDistricts = turkeyLocations.find(c => c.city === selectedCity)?.districts || []
 
-  const handleRemoveImage = (indexToRemove: number) => {
-    setImages(images.filter((_, index) => index !== indexToRemove));
+  // Mevcut resmi sil
+  const handleRemoveExistingImage = (indexToRemove: number) => {
+    setExistingImages(existingImages.filter((_, index) => index !== indexToRemove));
   };
+
+  // Yeni seçilen resmi listeden çıkar
+  const handleRemoveNewFile = (indexToRemove: number) => {
+    setNewFiles(newFiles.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files)
+      setNewFiles(prev => [...prev, ...files])
+    }
+  }
 
   const handleSubmit = async (formData: FormData) => {
     formData.append("id", listing.id)
     formData.append("type", listing.type)
     
-    // Mevcut resimleri de formData'ya ekleyelim (zaten hidden input olarak ekli ama garanti olsun)
-    // Ancak hidden inputlar zaten form submit ile otomatik gider.
-    // Biz state'teki güncel images listesini (silinenler hariç) gönderelim.
-    // FormData'daki existingImages'ları temizleyip state'tekileri ekleyelim mi?
-    // En iyisi hidden inputları render etmek.
+    // Varsayılan input file'dan gelenleri temizle
+    formData.delete("images")
+    
+    // Yeni seçilen dosyaları ekle
+    newFiles.forEach(file => {
+        formData.append("images", file)
+    })
 
     startTransition(async () => {
       try {
         await updateListingAction(formData);
+        toast.success("İlan başarıyla güncellendi.");
       } catch (error: any) {
         toast.error(error.message || "İlan güncellenirken bir hata oluştu.");
       }
@@ -59,9 +81,11 @@ export default function EditListingForm({ listing }: { listing: any }) {
       <Card>
         <CardHeader>
           <CardTitle>İlan Detayları</CardTitle>
+          <CardDescription>İlan bilgilerinizi güncelleyin.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           
+          {/* Başlık ve Açıklama */}
           <div className="space-y-2">
             <Label htmlFor="title">İlan Başlığı</Label>
             <Input id="title" name="title" defaultValue={listing.title} required />
@@ -87,7 +111,7 @@ export default function EditListingForm({ listing }: { listing: any }) {
           </div>
 
           {/* Konum */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>İl</Label>
               <Select name="city" defaultValue={selectedCity} onValueChange={setSelectedCity}>
@@ -118,6 +142,16 @@ export default function EditListingForm({ listing }: { listing: any }) {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+                <Label htmlFor="village">Köy / Mahalle</Label>
+                <Input 
+                  id="village" 
+                  name="village" 
+                  placeholder="Köy veya mahalle adı" 
+                  defaultValue={listing.village || ""}
+                  disabled={!selectedCity} 
+                />
+            </div>
           </div>
 
           {/* İletişim Bilgileri (Opsiyonel) */}
@@ -126,42 +160,83 @@ export default function EditListingForm({ listing }: { listing: any }) {
             <Input 
               id="contactPhone" 
               name="contactPhone" 
-              placeholder="İlanınız için alternatif bir telefon numarası (örn: 05xx xxx xx xx)" 
+              placeholder="İlanınız için alternatif bir telefon numarası" 
               type="tel"
               defaultValue={listing.contactPhone || ""}
             />
           </div>
 
-          {/* Galeri Önizleme ve Yönetimi */}
-          <div className="space-y-2">
-            <Label>Mevcut Fotoğraflar</Label>
-            <div className="flex gap-4 overflow-x-auto pb-2 flex-wrap">
-                {images.map((img, i) => (
-                    <div key={i} className="relative group">
+          {/* Fotoğraf Yönetimi */}
+          <div className="space-y-4">
+            <Label>Fotoğraflar</Label>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Mevcut Resimler */}
+                {existingImages.map((img, i) => (
+                    <div key={`existing-${i}`} className="relative aspect-square group">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={img} alt="ilan" className="h-24 w-24 object-cover rounded-lg border" />
+                        <img src={img} alt="ilan" className="w-full h-full object-cover rounded-lg border" />
                         <button
                             type="button"
-                            onClick={() => handleRemoveImage(i)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleRemoveExistingImage(i)}
+                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                         >
-                            <X className="h-3 w-3" />
+                            <X className="h-4 w-4" />
                         </button>
-                        {/* Mevcut resim URL'sini hidden input olarak gönder */}
+                        <div className="absolute bottom-2 left-2 bg-blue-500/80 text-white text-[10px] px-2 py-0.5 rounded">
+                            Mevcut
+                        </div>
+                        {/* Form submit olduğunda bu değerler gidecek */}
                         <input type="hidden" name="existingImages" value={img} />
                     </div>
                 ))}
-                {images.length === 0 && <p className="text-sm text-muted-foreground w-full">Fotoğraf yok.</p>}
-            </div>
-          </div>
 
-          {/* Yeni Fotoğraf Yükleme */}
-          <div className="space-y-2">
-            <Label htmlFor="images">Yeni Fotoğraf Ekle</Label>
-            <div className="flex items-center gap-4">
-                <Input id="images" name="images" type="file" multiple accept="image/*" className="cursor-pointer" />
+                {/* Yeni Seçilenler */}
+                {newFiles.map((file, i) => (
+                    <div key={`new-${i}`} className="relative aspect-square group">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img 
+                          src={URL.createObjectURL(file)} 
+                          alt="yeni" 
+                          className="w-full h-full object-cover rounded-lg border border-dashed border-primary" 
+                        />
+                        <button
+                            type="button"
+                            onClick={() => handleRemoveNewFile(i)}
+                            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                        <div className="absolute bottom-2 left-2 bg-green-500/80 text-white text-[10px] px-2 py-0.5 rounded">
+                            Yeni
+                        </div>
+                    </div>
+                ))}
+                
+                {/* Ekleme Butonu */}
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                >
+                  <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Resim Ekle</span>
+                </div>
             </div>
-            <p className="text-xs text-muted-foreground">Yeni yükledikleriniz mevcutların yanına eklenir.</p>
+
+            <input 
+                ref={fileInputRef}
+                id="images" 
+                name="images" 
+                type="file" 
+                multiple 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleFileSelect}
+            />
+            
+            <p className="text-xs text-muted-foreground">
+              Fotoğraf eklemek için tıklayın. Kapak fotoğrafı listedeki ilk fotoğraftır.
+            </p>
           </div>
 
         </CardContent>
@@ -170,12 +245,12 @@ export default function EditListingForm({ listing }: { listing: any }) {
             {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Güncelleniyor...
+                  Kaydediliyor...
                 </>
             ) : (
               <>
                 <Save className="mr-2 h-4 w-4" />
-                Kaydet
+                Değişiklikleri Kaydet
               </>
             )}
           </Button>

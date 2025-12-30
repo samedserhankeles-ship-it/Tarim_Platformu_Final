@@ -53,7 +53,7 @@ export default async function MyListingsPage() {
             id: j.id,
             title: j.title,
             price: `${j.wage} ₺`,
-            location: j.location,
+            location: j.city ? `${j.city}, ${j.district}` : "Konum Yok",
             status: j.active ? "active" : "passive",
             image: images[0] || "https://placehold.co/400x300/dbeafe/1e40af?text=Is+Ilani",
             date: j.createdAt.toLocaleDateString("tr-TR"),

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
+import { generateNumericId } from "@/lib/utils"
 
 export async function loginAction(formData: FormData) {
   const email = formData.get("email") as string
@@ -93,6 +94,7 @@ export async function loginAction(formData: FormData) {
           email,
           password, // Demo: Hashlemeden kaydediyoruz. Gerçekte bcrypt kullanılmalı.
           role: role.toUpperCase(), // FARMER, OPERATOR vb.
+          numericId: generateNumericId(),
         },
       })
   

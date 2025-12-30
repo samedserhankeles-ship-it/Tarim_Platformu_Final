@@ -202,9 +202,8 @@ export default function ProfileForm({ user }: { user: any }) { // user tipi daha
         {/* Sidebar / Avatar & Cover Image Area */}
         <div className="flex flex-col gap-6">
           <Card className="overflow-hidden">
-            <CardHeader className="bg-muted/50 pb-8 pt-8 text-center relative">
-              {/* Cover Image */}
-              <div className="absolute inset-x-0 top-0 h-32">
+            {/* Cover Image Area */}
+            <div className="relative h-40 bg-muted">
                 <ImageUploadField 
                   id="coverImageUpload"
                   name="coverImage"
@@ -213,25 +212,30 @@ export default function ProfileForm({ user }: { user: any }) { // user tipi daha
                   variant="banner"
                   currentValue={user.coverImage}
                 />
-              </div>
+            </div>
 
+            <CardHeader className="text-center relative pt-0 -mt-16 pb-6">
               {/* Avatar */}
-              <div className="relative z-10 mx-auto -mt-16 h-32 w-32 rounded-full border-4 border-background bg-primary/20 flex items-center justify-center">
-                <ImageUploadField 
-                  id="avatarUpload"
-                  name="image"
-                  label="Profil Fotoğrafı"
-                  defaultValue={user.image}
-                  variant="avatar"
-                  fallbackText={`${first ? first[0].toUpperCase() : "U"}${last ? last[0].toUpperCase() : ""}`}
-                  currentValue={user.image}
-                />
+              <div className="relative z-10 mx-auto h-32 w-32 rounded-full border-4 border-background bg-background flex items-center justify-center shadow-sm">
+                <div className="h-full w-full rounded-full overflow-hidden">
+                    <ImageUploadField 
+                    id="avatarUpload"
+                    name="image"
+                    label="Profil Fotoğrafı"
+                    defaultValue={user.image}
+                    variant="avatar"
+                    fallbackText={`${first ? first[0].toUpperCase() : "U"}${last ? last[0].toUpperCase() : ""}`}
+                    currentValue={user.image}
+                    />
+                </div>
               </div>
               
-              <CardTitle className="mt-4">{user.name}</CardTitle>
-              <CardDescription>{user.role}</CardDescription>
+              <div className="mt-4 space-y-1">
+                <CardTitle>{user.name}</CardTitle>
+                <CardDescription>{user.role}</CardDescription>
+              </div>
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-6 pt-0">
               <div className="grid gap-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Üyelik Tarihi:</span>

@@ -27,6 +27,13 @@ export async function getCurrentUser() {
         district: true,    // Add district
         crops: true,       // Add crops
         certificates: true, // Add certificates
+        website: true,     // Add website
+        addressDetail: true, // Add addressDetail
+        numericId: true,    // Add numericId
+        coverImage: true,   // Add coverImage
+        isRestricted: true, // Add restriction status
+        restrictionReason: true, // Add restriction reason
+        restrictedUntil: true, // Add restriction expiration
         createdAt: true, // Add createdAt
         updatedAt: true, // Add updatedAt
         // Add other fields as needed

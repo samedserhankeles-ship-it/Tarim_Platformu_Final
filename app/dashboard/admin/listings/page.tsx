@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, MoreHorizontal, Trash2, Loader2, EyeOff, Eye } from "lucide-react"; // Import EyeOff, Eye
+import { Search, MoreHorizontal, Trash2, Loader2, EyeOff, Eye, ExternalLink } from "lucide-react"; // Import EyeOff, Eye
 import { useEffect, useState, useTransition } from "react";
 import { deleteListingAction, toggleListingActiveStatusAction } from "@/app/actions/admin"; // Import toggleListingActiveStatusAction
 import { fetchAllListingsAction } from "@/app/actions/listing"; // Import the server action
@@ -186,8 +186,8 @@ export default function AdminListingsPage() {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => router.push(`/ilan/${listing.type.substring(0,4)}-${listing.id}`)}>
-                                            Görüntüle
+                                        <DropdownMenuItem onClick={() => window.open(`/ilan/${listing.type.substring(0,4)}-${listing.id}`, '_blank')}>
+                                            <ExternalLink className="mr-2 h-4 w-4" /> İlana Git
                                         </DropdownMenuItem>
                                         <DropdownMenuItem onClick={() => { setSelectedListing(listing); setOpenToggleStatusDialog(true); }}>
                                             {listing.active ? (

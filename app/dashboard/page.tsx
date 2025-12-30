@@ -1,6 +1,7 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"; // Assuming a Card component exists or will be created
 import { Button } from "@/components/ui/button"; // Assuming a Button component exists or will be created
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { DollarSign, MessageSquare, Tractor, Plus, User, FolderX, Heart } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth"; // getCurrentUser fonksiyonunu import et
 

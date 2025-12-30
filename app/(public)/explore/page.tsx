@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/auth"; // Import ekle
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,9 @@ export const metadata: Metadata = {
 
 // Veritabanından ilanları çeken fonksiyon
 async function getListings(searchParams: { [key: string]: string | string[] | undefined }) {
+  const currentUser = await getCurrentUser();
+  const isAdmin = currentUser?.role === "ADMIN";
+
   const search = typeof searchParams.q === "string" ? searchParams.q : undefined;
   const typeParams = searchParams.type;
   const categoryParams = searchParams.category;
@@ -46,16 +50,49 @@ async function getListings(searchParams: { [key: string]: string | string[] | un
 
   // Genel Arama
   if (search) {
-    whereProduct.OR = [
-      { title: { contains: search } },
-      { description: { contains: search } },
-      { category: { contains: search } }
-    ];
-    whereJob.OR = [
-      { title: { contains: search } },
-      { description: { contains: search } },
-      { location: { contains: search } }
-    ];
+    // ID Arama Mantığı
+    let searchId = search;
+    if (search.startsWith("prod-")) searchId = search.replace("prod-", "");
+    if (search.startsWith("job-")) searchId = search.replace("job-", "");
+
+    let isReportSearch = false;
+
+    // Şikayet ID Kontrolü (Sadece Admin)
+    if (isAdmin) {
+        const report = await prisma.report.findUnique({
+            where: { id: search },
+            select: { productId: true, jobPostingId: true }
+        });
+
+        if (report) {
+            // Eğer aranan metin bir şikayet ID'si ise, direkt ilgili ilanı getir
+            if (report.productId) {
+                whereProduct.id = report.productId;
+                delete whereProduct.active; // Pasif olsa bile getir
+                isReportSearch = true;
+            } else if (report.jobPostingId) {
+                whereJob.id = report.jobPostingId;
+                delete whereJob.active; // Pasif olsa bile getir
+                isReportSearch = true;
+            }
+        }
+    }
+
+    if (!isReportSearch) {
+        whereProduct.OR = [
+          { title: { contains: search } },
+          { description: { contains: search } },
+          { category: { contains: search } },
+          { id: { contains: searchId } } // ID araması eklendi
+        ];
+        whereJob.OR = [
+          { title: { contains: search } },
+          { description: { contains: search } },
+          { city: { contains: search } },
+          { district: { contains: search } },
+          { id: { contains: searchId } } // ID araması eklendi
+        ];
+    }
   }
 
   // Tip Filtresi
@@ -170,7 +207,7 @@ export default async function ExplorePage(props: {
     }), 
 
     ...jobs.map((j) => {
-      const locationDisplay = [j.city, j.district].filter(Boolean).join(", ") || j.location || j.user.city || "Konum Bilgisi";
+      const locationDisplay = [j.city, j.district].filter(Boolean).join(", ") || j.user.city || "Konum Bilgisi";
 
       return {
         id: `job-${j.id}`,
@@ -220,56 +257,59 @@ export default async function ExplorePage(props: {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {allListings.map((item) => (
-                <Card key={item.id} className={`overflow-hidden hover:shadow-lg transition-shadow group cursor-pointer flex flex-col ${item.isBarter ? 'border-purple-200 shadow-purple-100' : ''}`}>
-                    <div className="aspect-video w-full overflow-hidden bg-muted relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
-                        src={item.image} 
-                        alt={item.title}
-                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                    />
-                    <div className="absolute top-2 right-2">
-                        {item.isBarter ? (
-                            <Badge className="bg-purple-600 hover:bg-purple-700 flex items-center gap-1">
-                                <ArrowRightLeft className="h-3 w-3" /> Takas
-                            </Badge>
-                        ) : (
-                            <Badge className="bg-background/80 text-foreground backdrop-blur-sm hover:bg-background/90">
-                                {item.type}
-                            </Badge>
-                        )}
-                    </div>
-                    </div>
-                    <CardHeader className="p-4 pb-2">
-                    <div className="flex justify-between items-start">
-                        <div>
-                        <h3 className="font-bold text-lg leading-tight line-clamp-1">{item.title}</h3>
-                        <p className="text-xs text-muted-foreground mt-1">{item.category}</p>
-                        </div>
-                    </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0 flex-1">
-                    <div className="flex flex-col gap-2">
-                        <p className={`text-lg font-bold ${item.isBarter ? 'text-purple-700' : 'text-primary'}`}>
-                            {item.price}
-                        </p>
-                        <div className="flex items-center text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4 mr-1" />
-                        {item.location}
-                        </div>
-                    </div>
-                    </CardContent>
-                    <CardFooter className="p-4 pt-0 mt-auto border-t bg-muted/10 flex justify-between items-center text-xs text-muted-foreground">
-                        <Link href={`/profil/${item.userId}`} className="flex items-center gap-1 hover:underline hover:text-primary transition-colors z-10">
-                            <Briefcase className="h-3 w-3" /> {item.userName}
-                        </Link>
-                        <Link href={`/ilan/${item.id}`}>
-                          <Button size="sm" className={`h-8 ${item.isBarter ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}`} variant={item.isBarter ? 'default' : 'secondary'}>
-                              İncele
-                          </Button>
-                        </Link>
-                    </CardFooter>
-                </Card>
+                <div key={item.id} className="relative h-full">
+                  <Card className={`overflow-hidden hover:shadow-lg transition-shadow group flex flex-col h-full ${item.isBarter ? 'border-purple-200 shadow-purple-100' : ''} relative`}>
+                      {/* Tüm kartı kapsayan link - z-index 10 yapıldı */}
+                      <Link href={`/ilan/${item.id}`} className="absolute inset-0 z-10 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary">
+                          <span className="sr-only">İlanı İncele</span>
+                      </Link>
+
+                      <div className="aspect-video w-full overflow-hidden bg-muted relative z-0">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img 
+                          src={item.image} 
+                          alt={item.title}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      />
+                      <div className="absolute top-2 right-2">
+                          {item.isBarter ? (
+                              <Badge className="bg-purple-600 hover:bg-purple-700 flex items-center gap-1">
+                                  <ArrowRightLeft className="h-3 w-3" /> Takas
+                              </Badge>
+                          ) : (
+                              <Badge className="bg-background/80 text-foreground backdrop-blur-sm hover:bg-background/90">
+                                  {item.type}
+                              </Badge>
+                          )}
+                      </div>
+                      </div>
+                      <CardHeader className="p-4 pb-2 relative z-0">
+                      <div className="flex justify-between items-start">
+                          <div>
+                          <h3 className="font-bold text-lg leading-tight line-clamp-1">{item.title}</h3>
+                          <p className="text-xs text-muted-foreground mt-1">{item.category}</p>
+                          </div>
+                      </div>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0 flex-1 relative z-0">
+                      <div className="flex flex-col gap-2">
+                          <p className={`text-lg font-bold ${item.isBarter ? 'text-purple-700' : 'text-primary'}`}>
+                              {item.price}
+                          </p>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                          <MapPin className="h-4 w-4 mr-1" />
+                          {item.location}
+                          </div>
+                      </div>
+                      </CardContent>
+                      <CardFooter className="p-4 pt-0 mt-auto border-t bg-muted/10 flex justify-between items-center text-xs text-muted-foreground relative z-20">
+                          {/* Profil linki z-20 ile öne çıkarılarak tıklanabilir kalmalı */}
+                          <Link href={`/profil/${item.userId}`} className="flex items-center gap-1 hover:underline hover:text-primary transition-colors pointer-events-auto relative">
+                              <Briefcase className="h-3 w-3" /> {item.userName}
+                          </Link>
+                      </CardFooter>
+                  </Card>
+                </div>
                 ))}
             </div>
           )}

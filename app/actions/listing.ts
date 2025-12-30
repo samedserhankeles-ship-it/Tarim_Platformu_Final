@@ -126,6 +126,7 @@ export async function createListingAction(formData: FormData) {
   const description = formData.get("description") as string;
   const city = formData.get("city") as string;
   const district = formData.get("district") as string;
+  const village = formData.get("village") as string;
   const contactPhone = formData.get("contactPhone") as string;
   const images = formData.getAll("images"); 
 
@@ -150,20 +151,20 @@ export async function createListingAction(formData: FormData) {
       const workType = formData.get("workType") as string;
 
       await prisma.jobPosting.create({
-        data: {
-          title,
-          description,
-          city,
-          district,
-          contactPhone,
-          wage,
-          currency,
-          workType,
-          images: imagesString,
-          userId: currentUser.id,
-          active: true, 
-        },
-      });
+                data: {
+                  title,
+                  description,
+                  city,
+                  district,
+                  village,
+                  contactPhone,
+                  wage,
+                  currency,
+                  workType,
+                  images: imagesString,
+                  userId: currentUser.id,
+                  active: true,
+                },      });
     } else if (type === "product") {
       const price = parseFloat(formData.get("price") as string);
       const currency = formData.get("currency") as string || "TRY";
@@ -175,6 +176,7 @@ export async function createListingAction(formData: FormData) {
           description,
           city,
           district,
+          village,
           contactPhone,
           price,
           currency,
@@ -218,6 +220,7 @@ export async function updateListingAction(formData: FormData) {
   const description = formData.get("description") as string;
   const city = formData.get("city") as string;
   const district = formData.get("district") as string;
+  const village = formData.get("village") as string;
   const contactPhone = formData.get("contactPhone") as string;
   
   const newImageFiles = formData.getAll("images"); 
@@ -250,6 +253,7 @@ export async function updateListingAction(formData: FormData) {
           description,
           city,
           district,
+          village,
           contactPhone,
           wage,
           currency,
@@ -269,6 +273,7 @@ export async function updateListingAction(formData: FormData) {
           description,
           city,
           district,
+          village,
           contactPhone,
           price,
           currency,

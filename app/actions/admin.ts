@@ -1,8 +1,11 @@
 "use server";
 
+import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+
+const SUPER_ADMIN_EMAIL = "admin@tarim.com";
 
 // Helper to check if current user is admin
 async function checkAdmin() {
@@ -13,10 +16,20 @@ async function checkAdmin() {
   return currentUser;
 }
 
+// Helper to check if target is super admin
+async function checkSuperAdminTarget(userId: string) {
+    const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (targetUser && targetUser.email === SUPER_ADMIN_EMAIL) {
+        throw new Error("Ana yönetici hesabı üzerinde bu işlem yapılamaz.");
+    }
+    return targetUser;
+}
+
 // Admin: Kullanıcıyı Banlama
 export async function banUserAction(userId: string, durationInDays: number, reason: string) {
   try {
     await checkAdmin();
+    await checkSuperAdminTarget(userId);
 
     const bannedUntil = new Date();
     bannedUntil.setDate(bannedUntil.getDate() + durationInDays);
@@ -42,6 +55,8 @@ export async function banUserAction(userId: string, durationInDays: number, reas
 export async function unbanUserAction(userId: string) {
   try {
     await checkAdmin();
+    // Super admin zaten banlanamaz ama yine de kontrol ekleyelim
+    await checkSuperAdminTarget(userId);
 
     await prisma.user.update({
       where: { id: userId },
@@ -64,6 +79,7 @@ export async function unbanUserAction(userId: string) {
 export async function restrictUserAction(userId: string, reason: string) {
   try {
     await checkAdmin();
+    await checkSuperAdminTarget(userId);
 
     await prisma.user.update({
       where: { id: userId },
@@ -85,6 +101,7 @@ export async function restrictUserAction(userId: string, reason: string) {
 export async function unrestrictUserAction(userId: string) {
   try {
     await checkAdmin();
+    await checkSuperAdminTarget(userId);
 
     await prisma.user.update({
       where: { id: userId },
@@ -341,4 +358,275 @@ export async function sendPrivateAnnouncementAction(userId: string, title: strin
     console.error("Send Private Announcement Error:", error);
     return { success: false, message: error.message || "Duyuru gönderilirken bir hata oluştu." };
   }
+}
+
+// Admin: Yeni Kullanıcı Oluşturma
+export async function createUserAction(formData: FormData) {
+  try {
+    await checkAdmin();
+
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const role = formData.get("role") as string;
+
+    if (!name || !email || !password || !role) {
+      return { success: false, message: "Tüm alanları doldurunuz." };
+    }
+
+    // Email kontrolü
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return { success: false, message: "Bu e-posta adresi zaten kullanımda." };
+    }
+
+    const hashedPassword = await hash(password, 10);
+
+    await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role,
+      },
+    });
+
+    revalidatePath("/dashboard/users");
+    return { success: true, message: "Kullanıcı başarıyla oluşturuldu." };
+  } catch (error: any) {
+    console.error("Create User Error:", error);
+    return { success: false, message: error.message || "Kullanıcı oluşturulurken bir hata oluştu." };
+  }
+}
+
+// Admin: Kullanıcı Silme
+
+export async function deleteUserAction(userId: string) {
+
+  try {
+
+    const currentUser = await checkAdmin();
+
+
+
+    if (userId === currentUser.id) {
+
+      return { success: false, message: "Kendinizi silemezsiniz." };
+
+    }
+
+
+
+    // Super Admin Kontrolü
+
+    await checkSuperAdminTarget(userId);
+
+
+
+    // İlişkili verileri temizle (Transaction ile)
+
+    await prisma.$transaction(async (tx) => {
+
+      // 1. İlanları sil
+
+      await tx.jobPosting.deleteMany({ where: { userId } });
+
+      await tx.product.deleteMany({ where: { userId } });
+
+
+
+      // 2. Mesajları sil
+
+      await tx.message.deleteMany({ where: { senderId: userId } });
+
+      // Alıcı olduğu mesajlar conversation üzerinden silinmeli ama modelde receiverId opsiyonel.
+
+
+
+      // Konuşmaları sil (Katılımcı olduğu)
+
+      await tx.conversation.deleteMany({
+
+        where: {
+
+          OR: [
+
+            { participant1Id: userId },
+
+            { participant2Id: userId }
+
+          ]
+
+        }
+
+      });
+
+
+
+      // Bildirimleri sil
+
+      await tx.notification.deleteMany({ where: { userId } });
+
+
+
+      // Favorileri sil
+
+      await tx.favorite.deleteMany({ where: { userId } });
+
+      
+
+      // Favori Gruplarını sil
+
+      await tx.favoriteGroup.deleteMany({ where: { userId } });
+
+
+
+      // Duyuruları sil
+
+      await tx.announcement.deleteMany({ where: { authorId: userId } });
+
+      
+
+      // Bloklamaları sil
+
+      await tx.block.deleteMany({
+
+          where: {
+
+              OR: [
+
+                  { blockerId: userId },
+
+                  { blockedId: userId }
+
+              ]
+
+          }
+
+      });
+
+      
+
+      // Şikayetleri sil
+
+      await tx.report.deleteMany({
+
+          where: {
+
+              OR: [
+
+                  { reporterId: userId },
+
+                  { reportedId: userId }
+
+              ]
+
+          }
+
+      });
+
+
+
+      // Son olarak kullanıcıyı sil
+
+      await tx.user.delete({ where: { id: userId } });
+
+    });
+
+
+
+    revalidatePath("/dashboard/users");
+
+    return { success: true, message: "Kullanıcı ve ilişkili tüm veriler başarıyla silindi." };
+
+  } catch (error: any) {
+
+    console.error("Delete User Error:", error);
+
+    return { success: false, message: error.message || "Kullanıcı silinirken bir hata oluştu." };
+
+  }
+
+}
+
+
+
+// Admin: Kullanıcı Rolünü Güncelleme
+
+export async function updateUserRoleAction(userId: string, newRole: string) {
+
+  try {
+
+    const currentUser = await checkAdmin();
+
+
+
+    // Sadece Super Admin diğer kullanıcıları ADMIN yapabilir veya ADMIN yetkisini alabilir.
+
+    // Ancak daha basit bir yaklaşım olarak: Her admin rol değiştirebilsin ama Super Admin'e dokunamasın.
+
+    // Ekstra güvenlik: Eğer yeni rol ADMIN ise veya mevcut rol ADMIN ise işlemi yapan Super Admin olmalı mı?
+
+    // Kullanıcı isteği: "bu hesap diğer yönetici hesaplara yetki versin" -> Yani Super Admin yetki dağıtır.
+
+    
+
+    // Hedef Super Admin ise kimse rolünü değiştiremez
+
+    await checkSuperAdminTarget(userId);
+
+
+
+    // Eğer kullanıcı kendi rolünü değiştirmeye çalışıyorsa engelle
+
+    if (userId === currentUser.id) {
+
+        return { success: false, message: "Kendi rolünüzü değiştiremezsiniz." };
+
+    }
+
+
+
+    // Yetki kontrolü: Sadece Super Admin başka birini ADMIN yapabilir veya ADMIN yetkisini alabilir.
+
+    // Diğer adminler sadece FARMER, BUSINESS, OPERATOR arasında geçiş yapabilsin.
+
+    if (currentUser.email !== SUPER_ADMIN_EMAIL) {
+
+        // Eğer hedef kullanıcı şu an ADMIN ise veya yeni rol ADMIN olacaksa
+
+        const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+
+        if (targetUser?.role === "ADMIN" || newRole === "ADMIN") {
+
+             return { success: false, message: "Yönetici yetkisi verme/alma işlemi sadece Ana Yönetici tarafından yapılabilir." };
+
+        }
+
+    }
+
+
+
+    await prisma.user.update({
+
+      where: { id: userId },
+
+      data: { role: newRole },
+
+    });
+
+
+
+    revalidatePath("/dashboard/users");
+
+    return { success: true, message: `Kullanıcı rolü ${newRole} olarak güncellendi.` };
+
+  } catch (error: any) {
+
+    console.error("Update User Role Error:", error);
+
+    return { success: false, message: error.message || "Kullanıcı rolü güncellenirken bir hata oluştu." };
+
+  }
+
 }

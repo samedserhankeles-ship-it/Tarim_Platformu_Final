@@ -13,6 +13,7 @@ datasource db {
 // Kullanıcı Modeli
 model User {
   id            String    @id @default(cuid())
+  numericId     String?   @unique // 20 haneli özel ID
   name          String?
   email         String    @unique
   password      String?   // Harici auth (OAuth) kullanılırsa boş olabilir
@@ -64,6 +65,100 @@ model User {
   
   // Duyurular
   announcements Announcement[] @relation("CreatedAnnouncements")
+
+  // Sosyal Medya Gönderileri
+  posts     SocialPost[]
+  likes     Like[]
+  comments  Comment[]
+
+  // Takip Sistemi
+  followers Follow[] @relation("following")
+  following Follow[] @relation("follower")
+
+  // Forum İlişkileri
+  forumTopics ForumTopic[]
+  forumPosts  ForumPost[]
+}
+
+model Follow {
+  follower    User   @relation("follower", fields: [followerId], references: [id])
+  followerId  String
+  following   User   @relation("following", fields: [followingId], references: [id])
+  followingId String
+
+  createdAt DateTime @default(now())
+
+  @@id([followerId, followingId])
+}
+
+// Sosyal Medya Gönderisi
+model SocialPost {
+  id        String   @id @default(cuid())
+  content   String?  // Yazı içeriği
+  media     String?  // Medya URL'leri (Virgülle ayrılmış)
+  mediaType String   @default("IMAGE") // IMAGE, VIDEO, NONE
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  likes     Like[]
+  comments  Comment[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Forum Modelleri
+model ForumTopic {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  category  String   @default("GENEL") // TARIM, HAYVANCILIK, TEKNOLOJI vb.
+  views     Int      @default(0) // Görüntülenme sayısı eklendi
+  
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  posts     ForumPost[] // Konuya yazılan cevaplar
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ForumPost {
+  id        String   @id @default(cuid())
+  content   String
+  
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  
+  topicId   String
+  topic     ForumTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Like {
+  id        String     @id @default(cuid())
+  userId    String
+  postId    String
+  user      User       @relation(fields: [userId], references: [id])
+  post      SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, postId]) // Bir kullanıcı bir postu bir kez beğenebilir
+}
+
+model Comment {
+  id        String     @id @default(cuid())
+  content   String
+  userId    String
+  postId    String
+  user      User       @relation(fields: [userId], references: [id])
+  post      SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
 }
 
 // Bildirim Modeli
@@ -137,9 +232,9 @@ model JobPosting {
   id          String    @id @default(cuid())
   title       String
   description String
-  location    String?   // @deprecated
   city        String?
   district    String?
+  village     String?   // Köy/Mahalle
   contactPhone String? // New optional contact phone for the listing
   wage        Float   // Ücret
   currency    String    @default("TRY")
@@ -166,6 +261,7 @@ model Product {
   category    String    // Tohum, Gübre, Traktör vb.
   city        String?
   district    String?
+  village     String?   // Köy/Mahalle
   contactPhone String? // New optional contact phone for the listing
   image       String?   // Ana görsel (Thumbnail)
   images      String?   // Galeri görselleri (Virgülle ayrılmış URL listesi)
