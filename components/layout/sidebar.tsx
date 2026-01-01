@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, FileText, MessageSquare, Settings, LogOut, BarChart3, ShoppingBag, Users, Flag, FileStack, Megaphone, Mail, Sprout, Home, Store, User as UserIcon, MessageSquareText, Share2 } from "lucide-react"; // MessageSquareText eklendi
+import { LayoutDashboard, FileText, MessageSquare, Settings, LogOut, BarChart3, ShoppingBag, Users, Flag, FileStack, Megaphone, Mail, Sprout, Home, Store, User as UserIcon, MessageSquareText, Share2, Activity } from "lucide-react"; // Activity eklendi
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -48,6 +48,11 @@ function SidebarContent({ user, pathname, isMobile }: { user: UserType; pathname
         label: "Kullanıcı Sorgu",
         href: "/dashboard/users",
     };
+    const auditLogsItem = {
+        icon: Activity,
+        label: "Denetim Kayıtları",
+        href: "/dashboard/admin/logs",
+    };
     const listingsAdminItem = {
         icon: FileStack,
         label: "İlan Yönetimi",
@@ -57,6 +62,16 @@ function SidebarContent({ user, pathname, isMobile }: { user: UserType; pathname
         icon: Megaphone,
         label: "Duyurular",
         href: "/dashboard/admin/announcements",
+    };
+    const socialAdminItem = {
+        icon: MessageSquareText,
+        label: "Sosyal Yönetimi",
+        href: "/dashboard/admin/social",
+    };
+    const publicSocialItem = {
+        icon: Share2,
+        label: "Sosyal",
+        href: "/social",
     };
     const bulkMessagesAdminItem = {
         icon: Mail,
@@ -68,33 +83,48 @@ function SidebarContent({ user, pathname, isMobile }: { user: UserType; pathname
     if (settingsIndex !== -1) {
         // Doğru sıralamayı korumak için ters sırayla ekle
         dynamicSidebarItems.splice(settingsIndex, 0, reportsItem);
+        dynamicSidebarItems.splice(settingsIndex, 0, auditLogsItem); // Denetim Kayıtları eklendi
         dynamicSidebarItems.splice(settingsIndex, 0, userQueryItem);
         dynamicSidebarItems.splice(settingsIndex, 0, bulkMessagesAdminItem);
+        dynamicSidebarItems.splice(settingsIndex, 0, socialAdminItem);
+        dynamicSidebarItems.splice(settingsIndex, 0, publicSocialItem); // Kamu Sosyal Akışı eklendi
         dynamicSidebarItems.splice(settingsIndex, 0, announcementsAdminItem);
         dynamicSidebarItems.splice(settingsIndex, 0, listingsAdminItem);
     } else {
         // Fallback: "Ayarlar" bulunamazsa sona ekle
         dynamicSidebarItems.push(listingsAdminItem);
         dynamicSidebarItems.push(announcementsAdminItem);
+        dynamicSidebarItems.push(publicSocialItem); // Kamu Sosyal Akışı eklendi
+        dynamicSidebarItems.push(socialAdminItem);
         dynamicSidebarItems.push(bulkMessagesAdminItem);
         dynamicSidebarItems.push(userQueryItem);
         dynamicSidebarItems.push(reportsItem);
     }
   }
 
-  // İşletme rolü için "Mağazam" ve "Mağaza Ayarları" linklerini ekle
+  // İşletme rolü için "Sosyal", "Mağazam", "Sosyal Profilim" ve "Mağaza Ayarları" linklerini ekle
   if (user && user.role === "BUSINESS") {
     const ilanlarimIndex = dynamicSidebarItems.findIndex(item => item.label === "İlanlarım");
     if (ilanlarimIndex !== -1) {
       dynamicSidebarItems.splice(ilanlarimIndex + 1, 0, {
+        icon: Share2,
+        label: "Sosyal",
+        href: "/social",
+      });
+      dynamicSidebarItems.splice(ilanlarimIndex + 2, 0, {
         icon: Store,
         label: "Mağazam",
-        href: `/profil/${user.id}`, // Kendi profil sayfasına yönlendir (Herkese açık mağaza sayfası)
+        href: `/magaza/${user.id}`, // Yeni vitrin sayfasına yönlendir
       });
-      dynamicSidebarItems.splice(ilanlarimIndex + 2, 0, { // "Mağazam"ın hemen altına
+      dynamicSidebarItems.splice(ilanlarimIndex + 3, 0, {
+        icon: UserIcon,
+        label: "Sosyal Profilim",
+        href: `/profil/${user.id}`,
+      });
+      dynamicSidebarItems.splice(ilanlarimIndex + 4, 0, {
         icon: Settings, // Ayarlar ikonu
         label: "Mağaza Ayarları",
-        href: "/dashboard/magaza", // Yeni oluşturulan mağaza ayarları sayfasına yönlendir
+        href: "/dashboard/magaza", // Mağaza ayarları sayfası
       });
     }
   } else if (user && user.role !== "ADMIN") {

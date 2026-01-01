@@ -11,6 +11,8 @@ import { getCurrentUser } from "@/lib/auth"
 import { ChevronLeft } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import DeleteButton from "@/components/delete-button"
+import ReportButton from "@/components/report-button"
 
 export default async function TopicDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -39,6 +41,9 @@ export default async function TopicDetailPage(props: { params: Promise<{ id: str
 
   if (!topic) notFound()
 
+  const isAdmin = currentUser?.role === "ADMIN";
+  const isTopicOwner = currentUser?.id === topic.authorId;
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       {/* Back Button */}
@@ -51,11 +56,26 @@ export default async function TopicDetailPage(props: { params: Promise<{ id: str
       {/* Ana Konu */}
       <div className="space-y-6">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="secondary" className="uppercase tracking-wider">{topic.category}</Badge>
-            <span className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(topic.createdAt), { addSuffix: true, locale: tr })}
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="uppercase tracking-wider">{topic.category}</Badge>
+                <span className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(topic.createdAt), { addSuffix: true, locale: tr })}
+                </span>
+            </div>
+            <div className="flex gap-2">
+                {!isTopicOwner && (
+                    <ReportButton 
+                        reportedUserId={topic.authorId} 
+                        forumTopicId={topic.id}
+                        isLoggedIn={!!currentUser} 
+                        className="h-8 w-8 p-0"
+                    />
+                )}
+                {(isAdmin || isTopicOwner) && (
+                    <DeleteButton id={topic.id} type="topic" />
+                )}
+            </div>
           </div>
           <h1 className="text-3xl font-bold text-gray-900">{topic.title}</h1>
         </div>
@@ -91,32 +111,48 @@ export default async function TopicDetailPage(props: { params: Promise<{ id: str
 
         {/* Yanıtlar Listesi */}
         <div className="space-y-4">
-          {topic.posts.map((post) => (
-            <Card key={post.id} className="border shadow-sm hover:border-gray-300 transition-colors">
-              <CardContent className="p-5">
-                <div className="flex items-start gap-4">
-                  <Avatar className="h-10 w-10 border">
-                    <AvatarImage src={post.author.image || undefined} />
-                    <AvatarFallback>{post.author.name?.[0].toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm">{post.author.name}</span>
-                        <Badge variant="secondary" className="text-[10px] h-4 opacity-70">{post.author.role}</Badge>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: tr })}
-                      </span>
+          {topic.posts.map((post) => {
+            const isPostOwner = currentUser?.id === post.authorId;
+            return (
+                <Card key={post.id} className="border shadow-sm hover:border-gray-300 transition-colors">
+                <CardContent className="p-5">
+                    <div className="flex items-start gap-4">
+                    <Avatar className="h-10 w-10 border">
+                        <AvatarImage src={post.author.image || undefined} />
+                        <AvatarFallback>{post.author.name?.[0].toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{post.author.name}</span>
+                            <Badge variant="secondary" className="text-[10px] h-4 opacity-70">{post.author.role}</Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-muted-foreground">
+                                {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: tr })}
+                            </span>
+                            {!isPostOwner && (
+                                <ReportButton 
+                                    reportedUserId={post.authorId} 
+                                    forumPostId={post.id}
+                                    isLoggedIn={!!currentUser} 
+                                    className="h-6 w-6 p-0 text-muted-foreground"
+                                />
+                            )}
+                            {(isAdmin || isPostOwner) && (
+                                <DeleteButton id={post.id} type="post" topicId={topic.id} />
+                            )}
+                        </div>
+                        </div>
+                        <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        {post.content}
+                        </div>
                     </div>
-                    <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {post.content}
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+                </Card>
+            )
+          })}
         </div>
 
         {/* Yanıt Formu */}

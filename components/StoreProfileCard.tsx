@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
     MapPin, Calendar, Briefcase, Mail, Phone, Globe, Tractor, 
     User2, MessageSquare, Ban, Flag, Settings, MoreHorizontal, 
-    ChevronRight, Loader2 
+    ChevronRight, Loader2, Store 
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -153,7 +153,7 @@ export default function StoreProfileCard({
                     </div>
                     <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-3">
                         {user.createdAt && (
-                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <div className="flex items-center gap-1 text-[10px] text-muted-foreground" suppressHydrationWarning>
                                 <Calendar className="h-3 w-3" /> Katılım: {format(user.createdAt, "d MMMM yyyy", { locale: tr })}
                             </div>
                         )}
@@ -168,6 +168,13 @@ export default function StoreProfileCard({
                 {/* Actions Buttons */}
                 {showActions && currentUser && currentUser.id !== user.id && (
                     <div className="flex flex-wrap gap-3 justify-center md:justify-end w-full md:w-auto shrink-0 mb-4">
+                        {isBusinessProfile && (
+                             <Link href={`/magaza/${user.id}`}>
+                                <Button className="w-auto px-6 h-11 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 shadow-md">
+                                    <Store className="h-5 w-5 mr-2" /> Mağaza
+                                </Button>
+                             </Link>
+                        )}
                         <FollowButton 
                             followingId={user.id} 
                             initialIsFollowing={initialIsFollowing} 

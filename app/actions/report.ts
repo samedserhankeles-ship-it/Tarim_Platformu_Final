@@ -3,8 +3,16 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
+import { createActivityLog } from "@/lib/audit";
 
-export async function createReportAction(reportedUserId: string, reason: string, reportedListingId?: string) {
+export async function createReportAction(
+    reportedUserId: string, 
+    reason: string, 
+    reportedListingId?: string,
+    forumTopicId?: string,
+    forumPostId?: string,
+    socialPostId?: string
+) {
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -35,14 +43,17 @@ export async function createReportAction(reportedUserId: string, reason: string,
       where: {
         reporterId: currentUser.id,
         reportedId: reportedUserId,
-        reason: reason, // Prevent duplicate reports with same reason
+        reason: reason,
         productId: productId,
         jobPostingId: jobPostingId,
+        forumTopicId,
+        forumPostId,
+        socialPostId
       },
     });
 
     if (existingReport) {
-      return { success: false, message: "Bu kullanıcı hakkında bu sebeple daha önce şikayette bulundunuz." };
+      return { success: false, message: "Bu içerik hakkında bu sebeple daha önce şikayette bulundunuz." };
     }
 
     await prisma.report.create({
@@ -52,11 +63,14 @@ export async function createReportAction(reportedUserId: string, reason: string,
         reason: reason,
         productId: productId,
         jobPostingId: jobPostingId,
-        // status defaults to PENDING
+        forumTopicId,
+        forumPostId,
+        socialPostId
       },
     });
 
-    // Optionally revalidate admin reports page
+    await createActivityLog(currentUser.id, "REPORT", { reportedUserId, reason });
+
     revalidatePath("/dashboard/reports");
 
     return { success: true, message: "Şikayetiniz başarıyla iletilmiştir. Teşekkür ederiz." };

@@ -44,7 +44,7 @@ export default async function MessagesPage(props: {
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-full min-h-[calc(100vh-120px)] rounded-xl border bg-card overflow-hidden">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-140px)] rounded-xl border bg-card overflow-hidden">
       {/* Conversation List (Left Panel) */}
       <div className={`flex flex-col w-full md:w-80 border-r bg-background shrink-0 ${selectedConversationId ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b">
@@ -97,6 +97,7 @@ export default async function MessagesPage(props: {
       <div className={`flex-col flex-1 ${selectedConversationId ? 'flex' : 'hidden md:flex'}`}>
         {selectedConversation ? (
           <ChatView 
+            key={selectedConversation.id}
             conversationId={selectedConversation.id} 
             partner={selectedConversation.partner} 
             initialMessages={initialMessages}

@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from "react"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Trash2, Heart, MessageCircle, Share2, Send } from "lucide-react"
+import { MoreHorizontal, Trash2, Heart, MessageCircle, Share2, Send, Flag } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { tr } from "date-fns/locale"
 import {
@@ -17,6 +17,7 @@ import { deletePostAction, toggleLikeAction, createCommentAction, deleteCommentA
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import ReportButton from "@/components/report-button"
 
 interface Comment {
     id: string
@@ -46,9 +47,10 @@ interface PostCardProps {
   }
   currentUserId?: string
   isAdmin?: boolean
+  defaultShowComments?: boolean
 }
 
-export function PostCard({ post, currentUserId, isAdmin }: PostCardProps) {
+export function PostCard({ post, currentUserId, isAdmin, defaultShowComments = false }: PostCardProps) {
   const [isPending, startTransition] = useTransition()
   
   // Beğeni State'i (Optimistic UI için)
@@ -56,7 +58,7 @@ export function PostCard({ post, currentUserId, isAdmin }: PostCardProps) {
   const [likeCount, setLikeCount] = useState(post.likes.length)
   
   // Yorum State'i
-  const [showComments, setShowComments] = useState(false)
+  const [showComments, setShowComments] = useState(defaultShowComments)
   const [commentText, setCommentText] = useState("")
   const [comments, setComments] = useState<Comment[]>(post.comments) // Optimistic comments
 
@@ -100,18 +102,11 @@ export function PostCard({ post, currentUserId, isAdmin }: PostCardProps) {
       e.preventDefault()
       if (!commentText.trim() || !currentUserId) return
 
-      const tempId = Math.random().toString() // Geçici ID
-      
-      // Optimistic update için geçici yorum ekle (opsiyonel, burada sadece backend bekleyelim daha güvenli)
-      // Ancak kullanıcı deneyimi için bekletmek yerine loading gösterebiliriz.
-      
       startTransition(async () => {
           const result = await createCommentAction(post.id, commentText)
           if (result.success) {
               setCommentText("")
               toast.success("Yorum gönderildi")
-              // Not: Gerçek zamanlı güncelleme için router.refresh() actions içinde yapılıyor,
-              // bu sayede comments prop'u güncellenecek.
           } else {
               toast.error(result.message)
           }
@@ -131,6 +126,29 @@ export function PostCard({ post, currentUserId, isAdmin }: PostCardProps) {
       })
   }
 
+  const handleShare = async () => {
+      const shareData = {
+          title: `TarımPazar'da ${post.user.name} bir gönderi paylaştı`,
+          text: post.content || "Bir gönderi paylaşıldı.",
+          url: `${window.location.origin}/social/${post.id}` 
+      }
+
+      if (navigator.share) {
+          try {
+              await navigator.share(shareData)
+          } catch (err) {
+              console.log("Paylaşım iptal edildi.")
+          }
+      } else {
+          try {
+              await navigator.clipboard.writeText(`${shareData.title}\n${shareData.text}\n${shareData.url}`)
+              toast.success("Bağlantı panoya kopyalandı")
+          } catch (err) {
+              toast.error("Kopyalama başarısız")
+          }
+      }
+  }
+
   const isOwner = currentUserId === post.user.id
   const canDelete = isOwner || isAdmin
 
@@ -145,24 +163,49 @@ export function PostCard({ post, currentUserId, isAdmin }: PostCardProps) {
           <div className="flex items-center justify-between">
             <div>
                 <h3 className="font-semibold text-sm truncate">{post.user.name}</h3>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground" suppressHydrationWarning>
                     {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: tr })}
                 </p>
             </div>
-            {(canDelete) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={handleDeletePost}>
-                    <Trash2 className="mr-2 h-4 w-4" /> Sil
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            <div className="flex items-center gap-1">
+                {isAdmin && (
+                    <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-muted-foreground hover:text-red-600 -mr-1"
+                        onClick={handleDeletePost}
+                        title="Yönetici Silme Yetkisi"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                )}
+                
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        {canDelete && (
+                            <DropdownMenuItem className="text-red-600 cursor-pointer" onClick={handleDeletePost}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Sil
+                            </DropdownMenuItem>
+                        )}
+                        {!isOwner && (
+                            <DropdownMenuItem asChild>
+                                <ReportButton 
+                                    reportedUserId={post.user.id} 
+                                    socialPostId={post.id}
+                                    isLoggedIn={!!currentUserId} 
+                                    className="w-full justify-start cursor-pointer px-2 py-1.5 h-auto text-sm font-normal"
+                                    variant="ghost"
+                                />
+                            </DropdownMenuItem>
+                        )}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -183,7 +226,6 @@ export function PostCard({ post, currentUserId, isAdmin }: PostCardProps) {
       </CardContent>
 
       <CardFooter className="p-0 flex flex-col border-t bg-muted/5">
-        {/* Action Buttons */}
         <div className="flex w-full">
             <Button 
                 variant="ghost" 
@@ -206,19 +248,18 @@ export function PostCard({ post, currentUserId, isAdmin }: PostCardProps) {
             <Button 
                 variant="ghost" 
                 className="flex-1 rounded-none h-12 gap-2 text-muted-foreground hover:text-foreground"
+                onClick={handleShare}
             >
                 <Share2 className="h-5 w-5" />
                 <span className="text-sm hidden sm:inline">Paylaş</span>
             </Button>
         </div>
 
-        {/* Comments Section */}
         {showComments && (
             <div className="w-full border-t bg-white p-4 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                {/* Comment Input */}
                 <form onSubmit={handleCommentSubmit} className="flex gap-3">
                     <Avatar className="h-8 w-8">
-                        <AvatarFallback>S</AvatarFallback> {/* Current user fallback */}
+                        <AvatarFallback>U</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 flex gap-2">
                         <Input 
@@ -233,7 +274,6 @@ export function PostCard({ post, currentUserId, isAdmin }: PostCardProps) {
                     </div>
                 </form>
 
-                {/* Comments List */}
                 <div className="space-y-4 mt-4">
                     {comments.length === 0 ? (
                         <p className="text-center text-xs text-muted-foreground py-2">Henüz yorum yok. İlk yorumu sen yap!</p>

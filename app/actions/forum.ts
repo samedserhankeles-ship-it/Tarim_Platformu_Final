@@ -103,3 +103,61 @@ export async function getPopularTopicsAction() {
     }
 }
 
+export async function deleteTopicAction(topicId: string) {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return { success: false, message: "Oturum açmanız gerekiyor." };
+
+        const topic = await prisma.forumTopic.findUnique({
+            where: { id: topicId },
+            select: { authorId: true }
+        });
+
+        if (!topic) return { success: false, message: "Konu bulunamadı." };
+
+        // Yetki Kontrolü: Yazar veya Admin
+        if (topic.authorId !== user.id && user.role !== "ADMIN") {
+            return { success: false, message: "Bu işlemi yapmaya yetkiniz yok." };
+        }
+
+        await prisma.forumTopic.delete({
+            where: { id: topicId }
+        });
+
+        revalidatePath("/community");
+        return { success: true, message: "Konu silindi." };
+    } catch (error) {
+        console.error("Delete Topic Error:", error);
+        return { success: false, message: "Konu silinirken bir hata oluştu." };
+    }
+}
+
+export async function deleteForumPostAction(postId: string, topicId: string) {
+    try {
+        const user = await getCurrentUser();
+        if (!user) return { success: false, message: "Oturum açmanız gerekiyor." };
+
+        const post = await prisma.forumPost.findUnique({
+            where: { id: postId },
+            select: { authorId: true }
+        });
+
+        if (!post) return { success: false, message: "Yorum bulunamadı." };
+
+        // Yetki Kontrolü: Yazar veya Admin
+        if (post.authorId !== user.id && user.role !== "ADMIN") {
+            return { success: false, message: "Bu işlemi yapmaya yetkiniz yok." };
+        }
+
+        await prisma.forumPost.delete({
+            where: { id: postId }
+        });
+
+        revalidatePath(`/community/topic/${topicId}`);
+        return { success: true, message: "Yorum silindi." };
+    } catch (error) {
+        console.error("Delete Post Error:", error);
+        return { success: false, message: "Yorum silinirken bir hata oluştu." };
+    }
+}
+

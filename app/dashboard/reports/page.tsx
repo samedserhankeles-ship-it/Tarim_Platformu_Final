@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { Flag, MoreHorizontal, Trash2, Loader2, Eye, ExternalLink, FileText, ShoppingBag } from "lucide-react";
+import { Flag, MoreHorizontal, Trash2, Loader2, Eye, ExternalLink, FileText, ShoppingBag, MessageSquareText, User, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -37,6 +37,111 @@ import { deleteReportAction } from "@/app/actions/admin";
 import { fetchReportsAction } from "@/app/actions/reports";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// ReportTable Component (Outside of AdminReportsPage)
+const ReportTable = ({ 
+    data, 
+    type, 
+    onView, 
+    onDelete 
+}: { 
+    data: any[], 
+    type: "listing" | "social" | "forum" | "profile",
+    onView: (report: any) => void,
+    onDelete: (report: any) => void
+}) => (
+    <div className="overflow-x-auto">
+        <Table>
+        <TableHeader>
+            <TableRow>
+            <TableHead>Şikayet Eden</TableHead>
+            <TableHead>Şikayet Edilen</TableHead>
+            <TableHead>
+                {type === "listing" ? "İlan Başlığı" : 
+                 type === "social" ? "Gönderi Özeti" : 
+                 type === "forum" ? "Konu/Yorum" : "Profil Tipi"}
+            </TableHead>
+            <TableHead>Sebep</TableHead>
+            <TableHead>Durum</TableHead>
+            <TableHead>Tarih</TableHead>
+            <TableHead>Aksiyonlar</TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            {data.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                        Bu kategoride şikayet bulunmuyor.
+                    </TableCell>
+                </TableRow>
+            ) : (
+                data.map((report) => {
+                    let contentInfo = "N/A";
+                    let contentLink = "#";
+
+                    if (type === "listing") {
+                        const listing = report.product || report.jobPosting;
+                        contentInfo = listing?.title || "Silinmiş İlan";
+                        const listingType = report.product ? "prod" : "job";
+                        contentLink = `/ilan/${listingType}-${report.productId || report.jobPostingId}`;
+                    } else if (type === "social") {
+                        contentInfo = report.socialPost?.content?.substring(0, 30) + "..." || "Medya İçeriği";
+                        contentLink = `/social/${report.socialPostId}`;
+                    } else if (type === "forum") {
+                        contentInfo = report.forumTopic?.title || report.forumPost?.content?.substring(0, 30) + "...";
+                        contentLink = `/community/topic/${report.forumTopicId || report.forumPost?.topicId}`;
+                    } else {
+                        contentInfo = report.reported?.role || "Kullanıcı";
+                        contentLink = `/profil/${report.reportedId}`;
+                    }
+
+                    return (
+                        <TableRow key={report.id}>
+                            <TableCell className="font-medium">
+                                {report.reporter?.name || "Bilinmiyor"}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                                {report.reported?.name || "Bilinmiyor"}
+                            </TableCell>
+                            <TableCell>
+                                <Link href={contentLink} target="_blank" className="text-blue-600 hover:underline flex items-center gap-1">
+                                    <ExternalLink className="h-3 w-3" /> {contentInfo}
+                                </Link>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate" title={report.reason}>{report.reason}</TableCell>
+                            <TableCell>
+                                <Badge variant={report.status === "PENDING" ? "secondary" : report.status === "RESOLVED" ? "default" : "destructive"} className="capitalize">
+                                    {report.status === "PENDING" ? "Beklemede" : report.status === "RESOLVED" ? "Çözüldü" : "Reddedildi"}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>{format(new Date(report.createdAt), "dd MMM yyyy HH:mm", { locale: tr })}</TableCell>
+                            <TableCell>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" className="h-8 w-8 p-0">
+                                            <span className="sr-only">Aç</span>
+                                            <MoreHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => onView(report)}>
+                                            <Eye className="mr-2 h-4 w-4" /> İncele
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-red-600" onClick={() => onDelete(report)}>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Sil
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                    );
+                })
+            )}
+        </TableBody>
+        </Table>
+    </div>
+);
 
 export default function AdminReportsPage() {
   const router = useRouter();
@@ -55,15 +160,6 @@ export default function AdminReportsPage() {
     });
   }, []);
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case "PENDING": return "secondary";
-      case "RESOLVED": return "default";
-      case "DISMISSED": return "destructive";
-      default: return "secondary";
-    }
-  };
-
   const handleDeleteReport = async () => {
     if (!selectedReport) return;
     const result = await deleteReportAction(selectedReport.id);
@@ -79,21 +175,31 @@ export default function AdminReportsPage() {
     }
   };
 
-  const handleGoToMarketPage = () => { // Market sayfasına giden fonksiyon
+  const openView = (report: any) => {
+      setSelectedReport(report);
+      setOpenViewDialog(true);
+  };
+
+  const openDelete = (report: any) => {
+      setSelectedReport(report);
+      setOpenDeleteDialog(true);
+  };
+
+  const handleGoToMarketPage = () => {
     if (selectedReport) {
       const listingType = selectedReport.product ? "prod" : (selectedReport.jobPosting ? "job" : "");
       if (listingType === "prod") {
-        router.push(`/market`); // Ürün ise market sayfasına
+        router.push(`/market`);
       } else if (listingType === "job") {
-        router.push(`/explore`); // İş ilanı ise explore sayfasına
+        router.push(`/explore`);
       } else {
-        router.push(`/explore`); // İlan tipi belirli değilse genel explore sayfasına
+        router.push(`/explore`);
       }
-      setOpenViewDialog(false); // Detay penceresini kapat
+      setOpenViewDialog(false);
     }
   };
 
-  const handleGoToListingDetails = () => { // İlan detayına giden fonksiyon
+  const handleGoToListingDetails = () => {
     if (selectedReport) {
       const listingType = selectedReport.product ? "prod" : (selectedReport.jobPosting ? "job" : "");
       const listingId = selectedReport.productId || selectedReport.jobPostingId;
@@ -103,103 +209,58 @@ export default function AdminReportsPage() {
     }
   };
 
+  const listingReports = reports.filter(r => r.productId || r.jobPostingId);
+  const socialReports = reports.filter(r => r.socialPostId);
+  const forumReports = reports.filter(r => r.forumTopicId || r.forumPostId);
+  const profileReports = reports.filter(r => !r.productId && !r.jobPostingId && !r.socialPostId && !r.forumTopicId && !r.forumPostId);
 
   return (
     <div className="container mx-auto py-8 px-4">
       <h1 className="text-2xl font-bold tracking-tight mb-6">Kullanıcı Şikayetleri Yönetimi</h1>
       
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Flag className="h-5 w-5" />
-            Sistemdeki Şikayetler ({reports.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {reports.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-              <Flag className="h-12 w-12 mb-4 opacity-20" />
-              <p>Henüz sistemde kayıtlı şikayet bulunmamaktadır.</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Şikayet Eden</TableHead>
-                    <TableHead>Şikayet Edilen</TableHead>
-                    <TableHead>İlan</TableHead>
-                    <TableHead>Sebep</TableHead>
-                    <TableHead>Durum</TableHead>
-                    <TableHead>Tarih</TableHead>
-                    <TableHead>Aksiyonlar</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {reports.map((report) => {
-                    const reportedListing = report.product || report.jobPosting;
-                    const listingType = report.product ? "prod" : (report.jobPosting ? "job" : "");
-                    const listingId = report.productId || report.jobPostingId;
+      <Tabs defaultValue="listings" className="w-full space-y-4">
+        <TabsList className="grid w-full grid-cols-4 lg:w-[600px]">
+            <TabsTrigger value="listings" className="gap-2">
+                <FileText className="h-4 w-4" /> İlanlar
+                <Badge variant="secondary" className="ml-1 px-1 py-0 h-5 min-w-[1.25rem]">{listingReports.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="social" className="gap-2">
+                <Share2 className="h-4 w-4" /> Sosyal
+                <Badge variant="secondary" className="ml-1 px-1 py-0 h-5 min-w-[1.25rem]">{socialReports.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="forum" className="gap-2">
+                <MessageSquareText className="h-4 w-4" /> Forum
+                <Badge variant="secondary" className="ml-1 px-1 py-0 h-5 min-w-[1.25rem]">{forumReports.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="profile" className="gap-2">
+                <User className="h-4 w-4" /> Profil
+                <Badge variant="secondary" className="ml-1 px-1 py-0 h-5 min-w-[1.25rem]">{profileReports.length}</Badge>
+            </TabsTrigger>
+        </TabsList>
 
-                    return (
-                        <TableRow key={report.id}>
-                            <TableCell className="font-medium">
-                                {report.reporter?.name || report.reporter?.email || "Bilinmiyor"}
-                            </TableCell>
-                            <TableCell className="font-medium">
-                                {report.reported?.name || report.reported?.email || "Bilinmiyor"}
-                            </TableCell>
-                            <TableCell>
-                                {reportedListing ? (
-                                    <Link href={`/ilan/${listingType}-${listingId}`} className="text-blue-600 hover:underline flex items-center gap-1">
-                                        <FileText className="h-4 w-4" /> {reportedListing.title}
-                                    </Link>
-                                ) : (
-                                    "N/A"
-                                )}
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate">{report.reason}</TableCell>
-                            <TableCell>
-                                <Badge variant={getStatusBadgeVariant(report.status)} className="capitalize">
-                                    {report.status === "PENDING" ? "Beklemede" : report.status === "RESOLVED" ? "Çözüldü" : "Reddedildi"}
-                                </Badge>
-                            </TableCell>
-                            <TableCell>{format(report.createdAt, "dd MMM yyyy HH:mm", { locale: tr })}</TableCell>
-                            <TableCell>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Aç</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => { setSelectedReport(report); setOpenViewDialog(true); }}>
-                                            <Eye className="mr-2 h-4 w-4" /> Şikayeti Görüntüle
-                                        </DropdownMenuItem>
-                                        {reportedListing && ( // İlana git aksiyonu
-                                            <DropdownMenuItem onClick={() => {
-                                                const url = `/ilan/${listingType}-${listingId}`;
-                                                window.open(url, '_blank');
-                                            }}>
-                                                <ExternalLink className="mr-2 h-4 w-4" /> İlan Detayına Git
-                                            </DropdownMenuItem>
-                                        )}
-                                        <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => { setSelectedReport(report); setOpenDeleteDialog(true); }}>
-                                            <Trash2 className="mr-2 h-4 w-4" /> Sil
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </TableCell>
-                        </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                    <Flag className="h-5 w-5 text-primary" />
+                    Şikayet Listesi
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                <TabsContent value="listings" className="mt-0">
+                    <ReportTable data={listingReports} type="listing" onView={openView} onDelete={openDelete} />
+                </TabsContent>
+                <TabsContent value="social" className="mt-0">
+                    <ReportTable data={socialReports} type="social" onView={openView} onDelete={openDelete} />
+                </TabsContent>
+                <TabsContent value="forum" className="mt-0">
+                    <ReportTable data={forumReports} type="forum" onView={openView} onDelete={openDelete} />
+                </TabsContent>
+                <TabsContent value="profile" className="mt-0">
+                    <ReportTable data={profileReports} type="profile" onView={openView} onDelete={openDelete} />
+                </TabsContent>
+            </CardContent>
+        </Card>
+      </Tabs>
 
       {/* Delete Report Dialog */}
       <AlertDialog open={openDeleteDialog} onOpenChange={setOpenDeleteDialog}>
@@ -207,7 +268,7 @@ export default function AdminReportsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Şikayeti Sil</AlertDialogTitle>
             <AlertDialogDescription>
-              Bu şikayeti kalıcı olarak silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+              Bu şikayet kaydını silmek istediğinize emin misiniz? (İçerik silinmez, sadece şikayet kaydı silinir)
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -224,70 +285,32 @@ export default function AdminReportsPage() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Şikayet Detayları</DialogTitle>
-            <DialogDescription>
-                Şikayetin tüm detayları aşağıdadır.
-            </DialogDescription>
+            <DialogDescription>ID: {selectedReport?.id}</DialogDescription>
           </DialogHeader>
+          
           {selectedReport && (
-            <div className="space-y-6 py-4">
-               {/* Şikayet Nedeni */}
-               <div className="space-y-2">
-                 <h4 className="text-sm font-medium text-muted-foreground">Şikayet Nedeni</h4>
-                 <div className="p-3 bg-muted/50 rounded-lg text-sm border">
+            <div className="space-y-4">
+                <div className="p-3 bg-muted rounded-md text-sm border">
+                    <span className="font-semibold block mb-1">Şikayet Nedeni:</span>
                     {selectedReport.reason}
-                 </div>
-               </div>
-
-               {/* Taraflar */}
-               <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                     <h4 className="text-sm font-medium text-muted-foreground">Şikayet Eden</h4>
-                     <p className="font-medium text-sm">{selectedReport.reporter?.name || "İsimsiz"}</p>
-                     <p className="text-xs text-muted-foreground">{selectedReport.reporter?.email}</p>
-                  </div>
-                  <div className="space-y-1">
-                     <h4 className="text-sm font-medium text-muted-foreground">Şikayet Edilen</h4>
-                     <p className="font-medium text-sm">{selectedReport.reported?.name || "İsimsiz"}</p>
-                     <p className="text-xs text-muted-foreground">{selectedReport.reported?.email}</p>
-                  </div>
-               </div>
-
-               {/* İlan Detayı */}
-               {(selectedReport.product || selectedReport.jobPosting) && (
-                   <div className="space-y-2 pt-2 border-t">
-                      <h4 className="text-sm font-medium text-muted-foreground">İlgili İlan</h4>
-                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
-                          <span className="text-sm font-medium truncate max-w-[200px]">
-                              {selectedReport.product?.title || selectedReport.jobPosting?.title}
-                          </span>
-                          <Button 
-                                variant="outline" 
-                                size="sm" 
-                                className="h-7 text-xs"
-                                onClick={handleGoToListingDetails}
-                            >
-                                <ExternalLink className="mr-2 h-3 w-3" /> İlan Detayına Git
-                            </Button>
-                      </div>
-                   </div>
-               )}
-
-               {/* Meta Bilgiler */}
-               <div className="space-y-1 text-xs text-muted-foreground pt-2 border-t">
-                   <div className="flex justify-between">
-                       <span>Şikayet ID: {selectedReport.id}</span>
-                       <span>Tarih: {format(selectedReport.createdAt, "d MMMM yyyy HH:mm", { locale: tr })}</span>
-                   </div>
-                   {(selectedReport.productId || selectedReport.jobPostingId) && (
-                       <div className="flex justify-between">
-                           <span>İlan ID: {selectedReport.productId || selectedReport.jobPostingId}</span>
-                           <span>Tip: {selectedReport.product ? "Ürün" : "İş İlanı"}</span>
-                       </div>
-                   )}
-               </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <span className="font-semibold text-muted-foreground">Şikayet Eden:</span>
+                        <p>{selectedReport.reporter?.name}</p>
+                        <p className="text-xs text-muted-foreground">{selectedReport.reporter?.email}</p>
+                    </div>
+                    <div>
+                        <span className="font-semibold text-muted-foreground">Şikayet Edilen:</span>
+                        <p>{selectedReport.reported?.name}</p>
+                        <p className="text-xs text-muted-foreground">{selectedReport.reported?.email}</p>
+                    </div>
+                </div>
             </div>
           )}
-          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 sm:space-y-0 space-y-2"> {/* Butonları sağa hizala ve sırayı ters çevir */}
+
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 sm:space-y-0 space-y-2">
              {(selectedReport?.product || selectedReport?.jobPosting) && (
                 <Button variant="secondary" onClick={handleGoToListingDetails}>
                    <ExternalLink className="mr-2 h-4 w-4" /> İlana Git
@@ -302,7 +325,6 @@ export default function AdminReportsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }

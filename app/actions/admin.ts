@@ -630,3 +630,36 @@ export async function updateUserRoleAction(userId: string, newRole: string) {
   }
 
 }
+
+// Admin: Aktivite Loglarını Getir
+export async function getActivityLogsAction(filter?: { userId?: string; action?: string; date?: Date }) {
+  try {
+    await checkAdmin();
+
+    const whereClause: any = {};
+    if (filter?.userId) whereClause.userId = filter.userId;
+    if (filter?.action) whereClause.action = filter.action;
+    if (filter?.date) {
+      const nextDay = new Date(filter.date);
+      nextDay.setDate(nextDay.getDate() + 1);
+      whereClause.createdAt = {
+        gte: filter.date,
+        lt: nextDay,
+      };
+    }
+
+    const logs = await prisma.activityLog.findMany({
+      where: whereClause,
+      include: {
+        user: { select: { id: true, name: true, email: true, role: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100, // Son 100 kayıt
+    });
+
+    return { success: true, data: logs };
+  } catch (error: any) {
+    console.error("Get Activity Logs Error:", error);
+    return { success: false, message: "Aktivite logları alınırken bir hata oluştu." };
+  }
+}

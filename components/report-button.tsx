@@ -20,13 +20,25 @@ import { useToast } from "@/hooks/use-toast";
 
 interface ReportButtonProps {
   reportedUserId: string;
-  reportedListingId?: string; // Optional: if reporting from a listing
+  reportedListingId?: string;
+  forumTopicId?: string;
+  forumPostId?: string;
+  socialPostId?: string;
   variant?: "ghost" | "default" | "outline" | "secondary" | "destructive" | "link";
   className?: string;
   isLoggedIn: boolean;
 }
 
-export default function ReportButton({ reportedUserId, reportedListingId, variant = "ghost", className, isLoggedIn }: ReportButtonProps) {
+export default function ReportButton({ 
+    reportedUserId, 
+    reportedListingId, 
+    forumTopicId,
+    forumPostId,
+    socialPostId,
+    variant = "ghost", 
+    className, 
+    isLoggedIn 
+}: ReportButtonProps) {
   const [isPending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -43,7 +55,14 @@ export default function ReportButton({ reportedUserId, reportedListingId, varian
     }
     
     startTransition(async () => {
-      const result = await createReportAction(reportedUserId, reason, reportedListingId);
+      const result = await createReportAction(
+          reportedUserId, 
+          reason, 
+          reportedListingId,
+          forumTopicId,
+          forumPostId,
+          socialPostId
+      );
       if (result.success) {
         toast({
           title: "Şikayet İletildi",

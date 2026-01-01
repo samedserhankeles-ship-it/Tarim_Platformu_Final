@@ -65,6 +65,9 @@ model User {
   
   // Duyurular
   announcements Announcement[] @relation("CreatedAnnouncements")
+  
+  // Aktivite Logları
+  activityLogs ActivityLog[]
 
   // Sosyal Medya Gönderileri
   posts     SocialPost[]
@@ -103,6 +106,7 @@ model SocialPost {
   
   likes     Like[]
   comments  Comment[]
+  reports   Report[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -120,6 +124,7 @@ model ForumTopic {
   author    User     @relation(fields: [authorId], references: [id])
   
   posts     ForumPost[] // Konuya yazılan cevaplar
+  reports   Report[]
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -135,6 +140,8 @@ model ForumPost {
   topicId   String
   topic     ForumTopic @relation(fields: [topicId], references: [id], onDelete: Cascade)
   
+  reports   Report[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -294,6 +301,8 @@ model Conversation {
 model Message {
   id              String       @id @default(cuid())
   content         String
+  media           String?      // Medya URL'si
+  mediaType       String?      // IMAGE, VIDEO, FILE
   isRead          Boolean      @default(false)
   createdAt       DateTime     @default(now())
 
@@ -322,6 +331,15 @@ model Report {
   jobPostingId String?
   jobPosting JobPosting? @relation(fields: [jobPostingId], references: [id])
   
+  forumTopicId String?
+  forumTopic   ForumTopic? @relation(fields: [forumTopicId], references: [id])
+
+  forumPostId  String?
+  forumPost    ForumPost? @relation(fields: [forumPostId], references: [id])
+
+  socialPostId String?
+  socialPost   SocialPost? @relation(fields: [socialPostId], references: [id])
+  
   reason    String
   status    String   @default("PENDING") // PENDING, RESOLVED, DISMISSED
   
@@ -340,4 +358,18 @@ model Announcement {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Aktivite Log Modeli (Denetim Kaydı)
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  
+  action    String   // İşlem Tipi (LOGIN, REGISTER, CREATE_LISTING, REPORT, etc.)
+  details   String?  // İşlem detayı (JSON formatında olabilir)
+  ipAddress String?  // İsteğe bağlı IP adresi
+  userAgent String?  // Tarayıcı bilgisi
+  
+  createdAt DateTime @default(now())
 }

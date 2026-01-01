@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import { createActivityLog } from "@/lib/audit";
 
 interface ListingData {
   id: string;
@@ -165,6 +166,7 @@ export async function createListingAction(formData: FormData) {
                   userId: currentUser.id,
                   active: true,
                 },      });
+      await createActivityLog(currentUser.id, "CREATE_JOB", { title });
     } else if (type === "product") {
       const price = parseFloat(formData.get("price") as string);
       const currency = formData.get("currency") as string || "TRY";
@@ -187,6 +189,7 @@ export async function createListingAction(formData: FormData) {
           active: true, 
         },
       });
+      await createActivityLog(currentUser.id, "CREATE_PRODUCT", { title });
     } else {
       throw new Error("Geçersiz ilan türü belirtildi.");
     }
@@ -261,6 +264,7 @@ export async function updateListingAction(formData: FormData) {
           images: imagesString,
         },
       });
+      await createActivityLog(currentUser.id, "UPDATE_JOB", { id, title });
     } else if (type === "product") {
       const price = parseFloat(formData.get("price") as string);
       const currency = formData.get("currency") as string || "TRY";
@@ -282,6 +286,7 @@ export async function updateListingAction(formData: FormData) {
           images: imagesString,
         },
       });
+      await createActivityLog(currentUser.id, "UPDATE_PRODUCT", { id, title });
     } else {
       throw new Error("Geçersiz ilan türü belirtildi.");
     }

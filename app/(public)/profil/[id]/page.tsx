@@ -224,25 +224,21 @@ export default async function ProfilePage(props: { params: Promise<{ id: string 
             showActions={true}
         />
 
-        <Tabs defaultValue={isBusinessAccount ? "listings" : "posts"} className="w-full space-y-8">
+        <Tabs defaultValue="posts" className="w-full space-y-8">
             <div className="sticky top-16 z-20 bg-gray-50/95 backdrop-blur py-2">
-                <TabsList className={`grid w-full max-w-lg mx-auto ${isBusinessAccount ? 'grid-cols-1' : 'grid-cols-3'} h-12 bg-white border shadow-sm rounded-full p-1`}>
-                    {!isBusinessAccount && (
-                        <TabsTrigger value="posts" className="rounded-full">
-                            <Newspaper className="h-4 w-4 mr-2" />
-                            Akış
-                        </TabsTrigger>
-                    )}
+                <TabsList className="grid w-full max-w-lg mx-auto grid-cols-3 h-12 bg-white border shadow-sm rounded-full p-1">
+                    <TabsTrigger value="posts" className="rounded-full">
+                        <Newspaper className="h-4 w-4 mr-2" />
+                        Akış
+                    </TabsTrigger>
                     <TabsTrigger value="listings" className="rounded-full">
                         <LayoutGrid className="h-4 w-4 mr-2" />
                         İlanlar
                     </TabsTrigger>
-                    {!isBusinessAccount && (
-                        <TabsTrigger value="forum" className="rounded-full">
-                            <MessageSquareText className="h-4 w-4 mr-2" />
-                            Forum
-                        </TabsTrigger>
-                    )}
+                    <TabsTrigger value="forum" className="rounded-full">
+                        <MessageSquareText className="h-4 w-4 mr-2" />
+                        Forum
+                    </TabsTrigger>
                 </TabsList>
             </div>
 
@@ -331,7 +327,7 @@ export default async function ProfilePage(props: { params: Promise<{ id: string 
                         ) : (
                             <div className="space-y-3">
                                 {plainUser.forumTopics.map((topic: any) => (
-                                    <Link key={topic.id} href={`/forum/konu/${topic.id}`} className="block group">
+                                    <Link key={topic.id} href={`/community/topic/${topic.id}`} className="block group">
                                         <Card className="p-4 hover:border-primary transition-colors">
                                             <div className="flex justify-between items-start">
                                                 <h4 className="font-semibold group-hover:text-primary transition-colors line-clamp-1">{topic.title}</h4>
@@ -362,10 +358,10 @@ export default async function ProfilePage(props: { params: Promise<{ id: string 
                         ) : (
                             <div className="space-y-3">
                                 {plainUser.forumPosts.map((fPost: any) => (
-                                    <Link key={fPost.id} href={`/forum/konu/${fPost.topicId}`} className="block group">
+                                    <Link key={fPost.id} href={`/community/topic/${fPost.topic?.id}`} className="block group">
                                         <Card className="p-4 hover:border-emerald-200 transition-colors bg-gray-50/50">
                                             <p className="text-xs text-muted-foreground mb-2 italic">
-                                                "{fPost.topic.title}" konusuna yazdı:
+                                                "{fPost.topic?.title}" konusuna yazdı:
                                             </p>
                                             <p className="text-sm line-clamp-2">{fPost.content}</p>
                                             <p className="text-[10px] text-muted-foreground mt-2">

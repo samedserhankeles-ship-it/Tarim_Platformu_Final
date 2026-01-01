@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 import { generateNumericId } from "@/lib/utils"
+import { createActivityLog } from "@/lib/audit"
 
 export async function loginAction(formData: FormData) {
   const email = formData.get("email") as string
@@ -45,6 +46,9 @@ export async function loginAction(formData: FormData) {
       maxAge: 60 * 60 * 24 * 7, // 1 hafta
       path: "/",
     })
+
+    // Loglama
+    await createActivityLog(user.id, "LOGIN", "Kullanıcı giriş yaptı.");
 
   } catch (error) {
     console.error("Login error:", error)
@@ -106,6 +110,9 @@ export async function loginAction(formData: FormData) {
         maxAge: 60 * 60 * 24 * 7,
         path: "/",
       })
+
+      // Loglama
+      await createActivityLog(user.id, "REGISTER", { role: user.role, email: user.email });
   
     } catch (error) {
       console.error("SignUp error:", error)
@@ -115,7 +122,14 @@ export async function loginAction(formData: FormData) {
     redirect("/dashboard")
   }
   
-  export async function logoutAction() {  const cookieStore = await cookies()
-  cookieStore.delete("session_user_id")
-  redirect("/")
+  export async function logoutAction() {  
+    const cookieStore = await cookies()
+    const userId = cookieStore.get("session_user_id")?.value
+    
+    if (userId) {
+        await createActivityLog(userId, "LOGOUT", "Kullanıcı çıkış yaptı.");
+    }
+
+    cookieStore.delete("session_user_id")
+    redirect("/")
 }

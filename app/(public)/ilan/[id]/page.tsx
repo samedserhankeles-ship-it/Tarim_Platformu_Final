@@ -13,6 +13,7 @@ import FavoriteButton from "@/components/favorite-button";
 import { prisma } from "@/lib/prisma";
 import ReportButton from "@/components/report-button";
 import ImageGallery from "@/components/image-gallery";
+import ShareButton from "@/components/share-button"; // Import ShareButton
 import type { Metadata } from "next";
 
 export async function generateMetadata(
@@ -259,9 +260,10 @@ export default async function ListingDetailPage(props: { params: Promise<{ id: s
                             type={listing.type} 
                             initialIsFavorited={!!isFavorited} 
                         />
-                        <Button variant="ghost" size="icon">
-                            <Share2 className="h-5 w-5 text-muted-foreground" />
-                        </Button>
+                        <ShareButton 
+                            title={`TarımPazar İlanı: ${listing.title}`}
+                            text={listing.description.substring(0, 100) + "..."}
+                        />
                     </div>
                 </div>
 
